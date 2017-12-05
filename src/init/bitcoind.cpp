@@ -4,7 +4,7 @@
 
 #include <interfaces/init.h>
 #include <node/context.h>
-#include <util/system.h>
+#include <util/memory.h>
 
 #include <memory>
 
@@ -15,7 +15,6 @@ class BitcoindInit : public interfaces::Init
 public:
     BitcoindInit(NodeContext& node) : m_node(node)
     {
-        m_node.args = &gArgs;
         m_node.init = this;
     }
     NodeContext& m_node;
@@ -26,6 +25,6 @@ public:
 namespace interfaces {
 std::unique_ptr<Init> MakeNodeInit(NodeContext& node, int argc, char* argv[], int& exit_status)
 {
-    return std::make_unique<init::BitcoindInit>(node);
+    return MakeUnique<init::BitcoindInit>(node);
 }
 } // namespace interfaces
