@@ -13,30 +13,7 @@ namespace interfaces {
 class Init;
 
 //! Interface providing access to interprocess-communication (IPC)
-//! functionality. The IPC implementation is responsible for establishing
-//! connections between a controlling process and a process being controlled.
-//! When a connection is established, the process being controlled returns an
-//! interfaces::Init pointer to the controlling process, which the controlling
-//! process can use to get access to other interfaces and functionality.
-//!
-//! When spawning a new process, the steps are:
-//!
-//! 1. The controlling process calls interfaces::Ipc::spawnProcess(), which
-//!    calls ipc::Process::spawn(), which spawns a new process and returns a
-//!    socketpair file descriptor for communicating with it.
-//!    interfaces::Ipc::spawnProcess() then calls ipc::Protocol::connect()
-//!    passing the socketpair descriptor, which returns a local proxy
-//!    interfaces::Init implementation calling remote interfaces::Init methods.
-//! 2. The spawned process calls interfaces::Ipc::startSpawnProcess(), which
-//!    calls ipc::Process::checkSpawned() to read command line arguments and
-//!    determine whether it is a spawned process and what socketpair file
-//!    descriptor it should use. It then calls ipc::Protocol::serve() to handle
-//!    incoming requests from the socketpair and invoke interfaces::Init
-//!    interface methods, and exit when the socket is closed.
-//! 3. The controlling process calls local proxy interfaces::Init object methods
-//!    to make other proxy objects calling other remote interfaces. It can also
-//!    destroy the initial interfaces::Init object to close the connection and
-//!    shut down the spawned process.
+//! functionality.
 class Ipc
 {
 public:
@@ -59,13 +36,13 @@ public:
     }
 
 protected:
-    //! Internal implementation of public addCleanup method (above) as a
-    //! type-erased virtual function, since template functions can't be virtual.
+    //! Internal implementation of addCleanup as a type-erased virtual function,
+    //! since template functions can't be virtual.
     virtual void addCleanup(std::type_index type, void* iface, std::function<void()> cleanup) = 0;
 };
 
 //! Return implementation of Ipc interface.
-std::unique_ptr<Ipc> MakeIpc(const char* exe_name, const char* process_argv0, Init& init);
+std::unique_ptr<Ipc> MakeIpc(const char* exe_name, const char* arg0, Init& init);
 } // namespace interfaces
 
 #endif // BITCOIN_INTERFACES_IPC_H
