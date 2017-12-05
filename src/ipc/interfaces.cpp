@@ -10,6 +10,7 @@
 #include <ipc/protocol.h>
 #include <logging.h>
 #include <tinyformat.h>
+#include <util/memory.h>
 #include <util/system.h>
 
 #include <functional>
@@ -28,15 +29,15 @@ namespace {
 class IpcImpl : public interfaces::Ipc
 {
 public:
-    IpcImpl(const char* exe_name, const char* process_argv0, interfaces::Init& init)
-        : m_exe_name(exe_name), m_process_argv0(process_argv0), m_init(init),
+    IpcImpl(const char* exe_name, const char* arg0, interfaces::Init& init)
+        : m_exe_name(exe_name), m_arg0(arg0), m_init(init),
           m_protocol(ipc::capnp::MakeCapnpProtocol()), m_process(ipc::MakeProcess())
     {
     }
     std::unique_ptr<interfaces::Init> spawnProcess(const char* new_exe_name) override
     {
         int pid;
-        int fd = m_process->spawn(new_exe_name, m_process_argv0, pid);
+        int fd = m_process->spawn(new_exe_name, m_arg0, pid);
         LogPrint(::BCLog::IPC, "Process %s pid %i launched\n", new_exe_name, pid);
         auto init = m_protocol->connect(fd, m_exe_name);
         Ipc::addCleanup(*init, [this, new_exe_name, pid] {
@@ -61,7 +62,7 @@ public:
         m_protocol->addCleanup(type, iface, std::move(cleanup));
     }
     const char* m_exe_name;
-    const char* m_process_argv0;
+    const char* m_arg0;
     interfaces::Init& m_init;
     std::unique_ptr<Protocol> m_protocol;
     std::unique_ptr<Process> m_process;
@@ -70,8 +71,8 @@ public:
 } // namespace ipc
 
 namespace interfaces {
-std::unique_ptr<Ipc> MakeIpc(const char* exe_name, const char* process_argv0, Init& init)
+std::unique_ptr<Ipc> MakeIpc(const char* exe_name, const char* arg0, Init& init)
 {
-    return std::make_unique<ipc::IpcImpl>(exe_name, process_argv0, init);
+    return MakeUnique<ipc::IpcImpl>(exe_name, arg0, init);
 }
 } // namespace interfaces

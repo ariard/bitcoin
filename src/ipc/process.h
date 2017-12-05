@@ -14,7 +14,7 @@ class Protocol;
 //! IPC process interface for spawning bitcoin processes and serving requests
 //! in processes that have been spawned.
 //!
-//! There will be different implementations of this interface depending on the
+//! There will different implementations of this interface depending on the
 //! platform (e.g. unix, windows).
 class Process
 {
@@ -23,7 +23,7 @@ public:
 
     //! Spawn process and return socket file descriptor for communicating with
     //! it.
-    virtual int spawn(const std::string& new_exe_name, const fs::path& argv0_path, int& pid) = 0;
+    virtual int spawn(const std::string& new_exe_name, const fs::path& arg0_path, int& pid) = 0;
 
     //! Wait for spawned process to exit and return its exit code.
     virtual int waitSpawned(int pid) = 0;

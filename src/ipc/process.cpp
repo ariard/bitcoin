@@ -7,6 +7,7 @@
 #include <ipc/protocol.h>
 #include <mp/util.h>
 #include <tinyformat.h>
+#include <util/memory.h>
 #include <util/strencodings.h>
 
 #include <cstdint>
@@ -25,10 +26,10 @@ namespace {
 class ProcessImpl : public Process
 {
 public:
-    int spawn(const std::string& new_exe_name, const fs::path& argv0_path, int& pid) override
+    int spawn(const std::string& new_exe_name, const fs::path& arg0_path, int& pid) override
     {
         return mp::SpawnProcess(pid, [&](int fd) {
-            fs::path path = argv0_path;
+            fs::path path = arg0_path;
             path.remove_filename();
             path.append(new_exe_name);
             return std::vector<std::string>{path.string(), "-ipcfd", strprintf("%i", fd)};
@@ -57,5 +58,5 @@ public:
 };
 } // namespace
 
-std::unique_ptr<Process> MakeProcess() { return std::make_unique<ProcessImpl>(); }
+std::unique_ptr<Process> MakeProcess() { return MakeUnique<ProcessImpl>(); }
 } // namespace ipc
