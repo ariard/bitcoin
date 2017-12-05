@@ -55,6 +55,8 @@ classes for this purpose that are thin wrappers around Cap'n Proto
 [server](https://capnproto.org/cxxrpc.html#servers) classes, which handle the
 actual serialization and socket communication.
 
+## Design
+
 As much as possible, calls between processes are meant to work the same as
 calls within a single process without adding limitations or requiring extra
 implementation effort. Processes communicate with each other by calling regular
@@ -65,7 +67,7 @@ to allow invoked code to call back into invoking code at any time, and there is
 a 1:1 threading model where any thread invoking a method in another process has
 a corresponding thread in the invoked process responsible for executing all
 method calls from the source thread, without blocking I/O or holding up another
-call, and using the same thread local variables, locks, and callbacks between
+calls, and using the same thread local variables, locks, and callbacks between
 calls. The forwarding, tracking, and threading is implemented inside the
 [libmultiprocess](https://github.com/chaincodelabs/libmultiprocess) library
 which has the design goal of making calls between processes look like calls in
