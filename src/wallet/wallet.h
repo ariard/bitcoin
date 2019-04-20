@@ -371,6 +371,11 @@ public:
      */
     int nIndex;
 
+    /* Refers to height of block against which tx is merkle branch linked to
+     * An block_height == 0 means that tx isn't yet linked to any block
+     */
+    int m_block_height;
+
     CMerkleTx()
     {
         SetTx(MakeTransactionRef());
@@ -387,6 +392,7 @@ public:
     {
         hashBlock = uint256();
         nIndex = -1;
+        m_block_height = 0;
     }
 
     void SetTx(CTransactionRef arg)
@@ -403,9 +409,10 @@ public:
         READWRITE(hashBlock);
         READWRITE(vMerkleBranch);
         READWRITE(nIndex);
+        READWRITE(m_block_height);
     }
 
-    void SetMerkleBranch(const uint256& block_hash, int posInBlock);
+    void SetMerkleBranch(const uint256& block_hash, int posInBlock, int height);
 
     /**
      * Return depth of transaction in blockchain:
@@ -756,10 +763,10 @@ private:
      * Abandoned state should probably be more carefully tracked via different
      * posInBlock signals or by checking mempool presence when necessary.
      */
-    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, const uint256& block_hash, int posInBlock, bool fUpdate) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, const uint256& block_hash, int posInBlock, bool fUpdate, int block_height) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
     /* Mark a transaction (and its in-wallet descendants) as conflicting with a particular block. */
-    void MarkConflicted(const uint256& hashBlock, const uint256& hashTx);
+    void MarkConflicted(const uint256& hashBlock, int conflicting_height, const uint256& hashTx);
 
     /* Mark a transaction's inputs dirty, thus forcing the outputs to be recomputed */
     void MarkInputsDirty(const CTransactionRef& tx) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
@@ -768,7 +775,7 @@ private:
 
     /* Used by TransactionAddedToMemorypool/BlockConnected/Disconnected/ScanForWalletTransactions.
      * Should be called with non-zero block_hash and posInBlock if this is for a transaction that is included in a block. */
-    void SyncTransaction(const CTransactionRef& tx, const uint256& block_hash, int posInBlock = 0, bool update_tx = true) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    void SyncTransaction(const CTransactionRef& tx, const uint256& block_hash, int block_height, int posInBlock = 0, bool update_tx = true) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
     /* the HD chain data model (external chain counters) */
     CHDChain hdChain;

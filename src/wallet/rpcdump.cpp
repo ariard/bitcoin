@@ -376,18 +376,19 @@ UniValue importprunedfunds(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() != 2)
+    if (request.fHelp || request.params.size() != 3)
         throw std::runtime_error(
-            RPCHelpMan{"importprunedfunds",
+            RPCHelpMan{
+                "importprunedfunds",
                 "\nImports funds without rescan. Corresponding address or script must previously be included in wallet. Aimed towards pruned wallets. The end-user is responsible to import additional transactions that subsequently spend the imported outputs or rescan after the point in the blockchain the transaction is included.\n",
                 {
                     {"rawtransaction", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "A raw transaction in hex funding an already-existing address in wallet"},
                     {"txoutproof", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "The hex output from gettxoutproof that contains the transaction"},
+                    {"height", RPCArg::Type::NUM, RPCArg::Optional::NO, "The height in which transaction has been confirmed"},
                 },
                 RPCResults{},
                 RPCExamples{""},
-            }.ToString()
-        );
+            }.ToString());
 
     CMutableTransaction tx;
     if (!DecodeHexTx(tx, request.params[0].get_str()))
@@ -398,6 +399,8 @@ UniValue importprunedfunds(const JSONRPCRequest& request)
     CDataStream ssMB(ParseHexV(request.params[1], "proof"), SER_NETWORK, PROTOCOL_VERSION);
     CMerkleBlock merkleBlock;
     ssMB >> merkleBlock;
+
+    int height = request.params[2].get_int();
 
     //Search partial merkle tree in proof for our transaction and index in valid block
     std::vector<uint256> vMatch;
@@ -421,11 +424,10 @@ UniValue importprunedfunds(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Something wrong with merkleblock");
     }
 
-    wtx.nIndex = txnIndex;
-    wtx.hashBlock = merkleBlock.header.GetHash();
-
     auto locked_chain = pwallet->chain().lock();
     LOCK(pwallet->cs_wallet);
+
+    wtx.SetMerkleBranch(merkleBlock.header.GetHash(), txnIndex, height);
 
     if (pwallet->IsMine(*wtx.tx)) {
         pwallet->AddToWallet(wtx, false);

@@ -258,6 +258,7 @@ BOOST_FIXTURE_TEST_CASE(coin_mark_dirty_immature_credit, TestChain100Setup)
 
     wtx.hashBlock = ::ChainActive().Tip()->GetBlockHash();
     wtx.nIndex = 0;
+    wtx.m_block_height = ::ChainActive().Height();
 
     // Call GetImmatureCredit() once before adding the key to the wallet to
     // cache the current immature credit amount, which is 0.
@@ -289,7 +290,7 @@ static int64_t AddTx(CWallet& wallet, uint32_t lockTime, int64_t mockTime, int64
 
     CWalletTx wtx(&wallet, MakeTransactionRef(tx));
     if (block) {
-        wtx.SetMerkleBranch(block->GetBlockHash(), 0);
+        wtx.SetMerkleBranch(block->GetBlockHash(), 0, 0);
     }
     {
         LOCK(cs_main);
@@ -392,7 +393,7 @@ public:
         wallet->SetLastBlockHeight(wallet->GetLastBlockHeight() + 1);
         auto it = wallet->mapWallet.find(tx->GetHash());
         BOOST_CHECK(it != wallet->mapWallet.end());
-        it->second.SetMerkleBranch(::ChainActive().Tip()->GetBlockHash(), 1);
+        it->second.SetMerkleBranch(::ChainActive().Tip()->GetBlockHash(), 1, ::ChainActive().Height());
         return it->second;
     }
 

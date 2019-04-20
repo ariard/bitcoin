@@ -4316,7 +4316,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "importaddress",                    &importaddress,                 {"address","label","rescan","p2sh"} },
     { "wallet",             "importmulti",                      &importmulti,                   {"requests","options"} },
     { "wallet",             "importprivkey",                    &importprivkey,                 {"privkey","label","rescan"} },
-    { "wallet",             "importprunedfunds",                &importprunedfunds,             {"rawtransaction","txoutproof"} },
+    { "wallet",             "importprunedfunds",                &importprunedfunds,             {"rawtransaction","txoutproof", "height"} },
     { "wallet",             "importpubkey",                     &importpubkey,                  {"pubkey","label","rescan"} },
     { "wallet",             "importwallet",                     &importwallet,                  {"filename"} },
     { "wallet",             "keypoolrefill",                    &keypoolrefill,                 {"newsize"} },
