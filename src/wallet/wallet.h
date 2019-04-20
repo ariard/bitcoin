@@ -497,13 +497,14 @@ public:
         ABANDONED
     };
 
-    /* Confirmation includes tx status and a pair of {block hash/tx index in block} at which tx has been confirmed.
-     * This pair is both 0 if tx hasn't confirmed yet. Meaning of these fields changes with CONFLICTED state
-     * where they instead point to block hash and index of the deepest conflicting tx.
+    /* Confirmation includes tx status and a triplet of {block hash/block height/tx index in block} at which tx has been confirmed.
+     * This triplet is whole 0 if tx hasn't confirmed yet. Meaning of these fields changes with CONFLICTED state
+     * where they instead point to block hash and block height of the deepest conflicting tx.
      */
     struct Confirmation {
         Status status = UNCONFIRMED;
         uint256 hashBlock = uint256();
+        int block_height = 0;
         int nIndex = 0;
     };
 
@@ -547,7 +548,6 @@ public:
          * compatibility (pre-commit 9ac63d6).
          */
         if (serializedIndex == -1 && m_confirm.hashBlock == ABANDON_HASH) {
-            m_confirm.hashBlock = uint256();
             setAbandoned();
         } else if (serializedIndex == -1) {
             setConflicted();
@@ -631,7 +631,7 @@ public:
     // in place.
     std::set<uint256> GetConflicts() const NO_THREAD_SAFETY_ANALYSIS;
 
-    void SetConf(Status status, const uint256& block_hash, int posInBlock);
+    void SetConf(Status status, const uint256& block_hash, int posInBlock, int block_height);
 
     /**
      * Return depth of transaction in blockchain:
@@ -653,12 +653,14 @@ public:
     {
         m_confirm.status = CWalletTx::ABANDONED;
         m_confirm.hashBlock = uint256();
+        m_confirm.block_height = 0;
         m_confirm.nIndex = 0;
     }
     bool isConflicted() const { return m_confirm.status == CWalletTx::CONFLICTED; }
     void setConflicted() { m_confirm.status = CWalletTx::CONFLICTED; }
     bool isUnconfirmed() const { return m_confirm.status == CWalletTx::UNCONFIRMED; }
     void setUnconfirmed() { m_confirm.status = CWalletTx::UNCONFIRMED; }
+    bool isConfirmed() const { return m_confirm.status == CWalletTx::CONFIRMED; }
     void setConfirmed() { m_confirm.status = CWalletTx::CONFIRMED; }
     const uint256& GetHash() const { return tx->GetHash(); }
     bool IsCoinBase() const { return tx->IsCoinBase(); }
@@ -799,10 +801,10 @@ private:
      * Abandoned state should probably be more carefully tracked via different
      * posInBlock signals or by checking mempool presence when necessary.
      */
-    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, CWalletTx::Status status, const uint256& block_hash, int posInBlock, bool fUpdate) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    bool AddToWalletIfInvolvingMe(const CTransactionRef& tx, CWalletTx::Status status, const uint256& block_hash, int posInBlock, bool fUpdate, int block_height) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
     /* Mark a transaction (and its in-wallet descendants) as conflicting with a particular block. */
-    void MarkConflicted(const uint256& hashBlock, const uint256& hashTx);
+    void MarkConflicted(const uint256& hashBlock, int conflicting_height, const uint256& hashTx);
 
     /* Mark a transaction's inputs dirty, thus forcing the outputs to be recomputed */
     void MarkInputsDirty(const CTransactionRef& tx) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
@@ -811,7 +813,7 @@ private:
 
     /* Used by TransactionAddedToMemorypool/BlockConnected/Disconnected/ScanForWalletTransactions.
      * Should be called with non-zero block_hash and posInBlock if this is for a transaction that is included in a block. */
-    void SyncTransaction(const CTransactionRef& tx, CWalletTx::Status status, const uint256& block_hash, int posInBlock = 0, bool update_tx = true) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    void SyncTransaction(const CTransactionRef& tx, CWalletTx::Status status, const uint256& block_hash, int block_height, int posInBlock = 0, bool update_tx = true) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
     /* the HD chain data model (external chain counters) */
     CHDChain hdChain;
@@ -976,6 +978,8 @@ public:
     /** Interface for accessing chain state. */
     interfaces::Chain& chain() const { assert(m_chain); return *m_chain; }
 
+    /** Interface to assert chain access. */
+    bool hasChain() const { return m_chain != nullptr; }
     const CWalletTx* GetWalletTx(const uint256& hash) const;
 
     //! check whether we are allowed to upgrade (or already support) to the named feature
