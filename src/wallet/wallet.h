@@ -835,6 +835,13 @@ private:
      */
     uint256 m_last_block_processed GUARDED_BY(cs_wallet);
 
+    /* Height of last block processed is used by wallet to know depth of transactions
+     * without relying on Chain interface beyond asynchronous updates. For safety, we
+     * initialize it to -1.
+     */
+    int m_last_block_processed_height { -1 }
+    GUARDED_BY(cs_wallet);
+
 public:
     /*
      * Main wallet lock.
@@ -1334,6 +1341,14 @@ public:
 
     /** Implement lookup of key origin information through wallet key metadata. */
     bool GetKeyOrigin(const CKeyID& keyid, KeyOriginInfo& info) const override;
+
+    int GetLastBlockHeight() const
+    {
+        assert(m_last_block_processed_height >= 0);
+        return m_last_block_processed_height;
+    };
+    /** Set last block processed height, currently only use in unit test */
+    void SetLastBlockHeight(int block_height) { m_last_block_processed_height = block_height; };
 };
 
 /**

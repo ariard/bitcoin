@@ -1307,6 +1307,7 @@ void CWallet::BlockConnected(const CBlock& block, const std::vector<CTransaction
     // to abandon a transaction and then have it inadvertently cleared by
     // the notification that the conflicted transaction was evicted.
 
+    m_last_block_processed_height += 1;
     for (const CTransactionRef& ptx : vtxConflicted) {
         SyncTransaction(ptx, {} /* block hash */, 0 /* position in block */);
         TransactionRemovedFromMempool(ptx);
@@ -1323,9 +1324,12 @@ void CWallet::BlockDisconnected(const CBlock& block) {
     auto locked_chain = chain().lock();
     LOCK(cs_wallet);
 
+    m_last_block_processed_height -= 1;
     for (const CTransactionRef& ptx : block.vtx) {
         SyncTransaction(ptx, {} /* block hash */, 0 /* position in block */);
     }
+
+    m_last_block_processed = block.GetHash();
 }
 
 void CWallet::UpdatedBlockTip()
@@ -4334,8 +4338,10 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
     const Optional<int> tip_height = locked_chain->getHeight();
     if (tip_height) {
         walletInstance->m_last_block_processed = locked_chain->getBlockHash(*tip_height);
+        walletInstance->m_last_block_processed_height = *tip_height;
     } else {
         walletInstance->m_last_block_processed.SetNull();
+        walletInstance->m_last_block_processed_height = -1;
     }
 
     if (tip_height && *tip_height != rescan_height)
@@ -4475,6 +4481,8 @@ void CMerkleTx::SetMerkleBranch(const uint256& block_hash, int posInBlock)
 
 int CMerkleTx::GetDepthInMainChain(interfaces::Chain::Lock& locked_chain) const
 {
+    assert(m_block_height >= -1);
+
     if (hashUnset())
         return 0;
 

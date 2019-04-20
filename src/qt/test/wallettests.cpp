@@ -135,11 +135,17 @@ void TestGUI()
     auto chain = interfaces::MakeChain();
     std::shared_ptr<CWallet> wallet = std::make_shared<CWallet>(chain.get(), WalletLocation(), WalletDatabase::CreateMock());
     bool firstRun;
+    int height;
+    {
+        auto locked_chain = wallet->chain().lock();
+        height = ::ChainActive().Height();
+    }
     wallet->LoadWallet(firstRun);
     {
         LOCK(wallet->cs_wallet);
         wallet->SetAddressBook(GetDestinationForKey(test.coinbaseKey.GetPubKey(), wallet->m_default_address_type), "", "receive");
         wallet->AddKeyPubKey(test.coinbaseKey, test.coinbaseKey.GetPubKey());
+        wallet->SetLastBlockHeight(height);
     }
     {
         auto locked_chain = wallet->chain().lock();
