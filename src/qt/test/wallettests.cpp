@@ -138,9 +138,11 @@ void TestGUI()
     bool firstRun;
     wallet->LoadWallet(firstRun);
     {
+        auto locked_chain = wallet->chain().lock();
         LOCK(wallet->cs_wallet);
         wallet->SetAddressBook(GetDestinationForKey(test.coinbaseKey.GetPubKey(), wallet->m_default_address_type), "", "receive");
         wallet->AddKeyPubKey(test.coinbaseKey, test.coinbaseKey.GetPubKey());
+        wallet->SetLastBlockProcessed(105, ::ChainActive().Tip()->GetBlockHash());
     }
     {
         auto locked_chain = wallet->chain().lock();
