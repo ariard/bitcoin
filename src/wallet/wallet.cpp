@@ -4665,10 +4665,13 @@ void CWalletTx::SetConf(Status status, const uint256& block_hash, int posInBlock
 
 int CWalletTx::GetDepthInMainChain(interfaces::Chain::Lock& locked_chain) const
 {
+    if (pwallet == nullptr)
+        return 0;
+    AssertLockHeld(pwallet->cs_wallet);
     assert(m_confirm.block_height >= -1);
     if (isUnconfirmed() || isAbandoned()) return 0;
 
-    return locked_chain.getBlockDepth(m_confirm.hashBlock) * (isConflicted() ? -1 : 1);
+    return (pwallet->GetLastBlockHeight() - m_confirm.block_height + 1) * (isConflicted() ? -1 : 1);
 }
 
 int CWalletTx::GetBlocksToMaturity(interfaces::Chain::Lock& locked_chain) const
