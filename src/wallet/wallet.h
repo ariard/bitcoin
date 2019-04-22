@@ -360,6 +360,9 @@ private:
   /** Constant used in hashBlock to indicate tx has been abandoned */
     static const uint256 ABANDON_HASH;
 
+protected:
+    const CWallet* pwallet;
+
 public:
     CTransactionRef tx;
     uint256 hashBlock;
@@ -382,17 +385,18 @@ public:
         Init();
     }
 
-    explicit CMerkleTx(CTransactionRef arg)
+    explicit CMerkleTx(CTransactionRef arg, const CWallet* pwalletIn)
     {
         SetTx(std::move(arg));
-        Init();
+        Init(pwalletIn);
     }
 
-    void Init()
+    void Init(const CWallet* pwalletIn = nullptr)
     {
         hashBlock = uint256();
         nIndex = -1;
         m_block_height = 0;
+        pwallet = pwalletIn;
     }
 
     void SetTx(CTransactionRef arg)
@@ -447,8 +451,6 @@ int CalculateMaximumSignedInputSize(const CTxOut& txout, const CWallet* pwallet,
  */
 class CWalletTx : public CMerkleTx
 {
-private:
-    const CWallet* pwallet;
 
 public:
     /**
@@ -507,14 +509,13 @@ public:
     mutable bool fInMempool;
     mutable CAmount nChangeCached;
 
-    CWalletTx(const CWallet* pwalletIn, CTransactionRef arg) : CMerkleTx(std::move(arg))
+    CWalletTx(const CWallet* pwalletIn, CTransactionRef arg) : CMerkleTx(std::move(arg), pwalletIn)
     {
-        Init(pwalletIn);
+        Init();
     }
 
-    void Init(const CWallet* pwalletIn)
+    void Init()
     {
-        pwallet = pwalletIn;
         mapValue.clear();
         vOrderForm.clear();
         fTimeReceivedIsTxTime = false;
@@ -547,7 +548,7 @@ public:
     template<typename Stream>
     void Unserialize(Stream& s)
     {
-        Init(nullptr);
+        Init();
         char fSpent;
 
         s >> static_cast<CMerkleTx&>(*this);
