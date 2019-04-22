@@ -4476,12 +4476,19 @@ void CMerkleTx::SetMerkleBranch(const uint256& block_hash, int posInBlock, int b
 
 int CMerkleTx::GetDepthInMainChain(interfaces::Chain::Lock& locked_chain) const
 {
+    if (pwallet == nullptr)
+        return 0;
     assert(m_block_height >= -1);
 
     if (hashUnset())
         return 0;
 
-    return locked_chain.getBlockDepth(hashBlock) * (nIndex == -1 ? -1 : 1);
+    // If nIndex is -1 and the block hash is set, it means the transaction is conflicted, and that m_block_height
+    // will be set to the height of the earliest conflicting block so can return 0 if that block has been disconnected"
+    if (nIndex == -1 && pwallet->GetLastBlockHeight() < m_block_height)
+        return 0;
+
+    return (pwallet->GetLastBlockHeight() - m_block_height + 1) * (nIndex == -1 ? -1 : 1);
 }
 
 int CMerkleTx::GetBlocksToMaturity(interfaces::Chain::Lock& locked_chain) const

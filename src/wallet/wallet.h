@@ -375,7 +375,9 @@ public:
     int nIndex;
 
     /* Refers to height of block against which tx is merkle branch linked to
-     * An block_height == 0 means that tx isn't yet linked to any block
+     * A block_height == -1 means that tx isn't yet linked to any block.
+     * When an nIndex == -1 and hashBlock is nonzero, m_block_height refers
+     * to the earliest block with a conflicting transaction.
      */
     int m_block_height;
 
@@ -395,7 +397,7 @@ public:
     {
         hashBlock = uint256();
         nIndex = -1;
-        m_block_height = 0;
+        m_block_height = -1;
         pwallet = pwalletIn;
     }
 
