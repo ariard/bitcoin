@@ -97,10 +97,7 @@ static std::set<CWallet*> g_unloading_wallet_set;
 // Custom deleter for shared_ptr<CWallet>.
 static void ReleaseWallet(CWallet* wallet)
 {
-    // Unregister and delete the wallet right after BlockUntilSyncedToCurrentChain
-    // so that it's in sync with the current chainstate.
     wallet->WalletLogPrintf("Releasing wallet\n");
-    wallet->BlockUntilSyncedToCurrentChain();
     wallet->Flush();
     wallet->m_chain_notifications_handler.reset();
     delete wallet;
