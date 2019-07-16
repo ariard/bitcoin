@@ -1220,6 +1220,33 @@ static bool AcceptToMemoryPoolWithTime(const CChainParams& chainparams, CTxMemPo
     return res;
 }
 
+bool AcceptPackageToMemoryPool(CTxMemPool& pool, CValidationState& state,
+        std::list<CTransactionRef>& tx_list, bool *missing_inputs,
+        std::list<CTransactionRef>* replaced_transactions,
+        const CAmount nAbsurdFee, bool test_accept)
+{
+    const CChainParams& chainparams = Params();
+    AssertLockHeld(cs_main);
+
+    std::vector<COutPoint> coins_to_uncache;
+    MemPoolAccept::ATMPArgs args { chainparams, state, missing_inputs, GetTime(), replaced_transactions, /* m_bypass_limits */ false, nAbsurdFee, coins_to_uncache, test_accept };
+    bool res = MemPoolAccept(pool).AcceptMultipleTransactions(tx_list, args);
+
+    if (!res) {
+        // Remove coins that were not present in the coins cache beforehand;
+        // this is to prevent memory DoS in case we receive a large number of
+        // invalid transactions that attempt to overrun the in-memory coins cache
+        // (`CCoinsViewCache::cacheCoins`).
+        for (const COutPoint& hashTx : coins_to_uncache) {
+            ::ChainstateActive().CoinsTip().Uncache(hashTx);
+        }
+    }
+    // After we've (potentially) uncached entries, ensure our coins cache is still within its size limits
+    CValidationState stateDummy;
+    ::ChainstateActive().FlushStateToDisk(chainparams, stateDummy, FlushStateMode::PERIODIC);
+    return res;
+}
+
 bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransactionRef &tx,
                         bool* pfMissingInputs, std::list<CTransactionRef>* plTxnReplaced,
                         bool bypass_limits, const CAmount nAbsurdFee, bool test_accept)
