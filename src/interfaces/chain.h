@@ -66,9 +66,6 @@ public:
     public:
         virtual ~Lock() {}
 
-        //! Get block hash. Height must be valid or this function will abort.
-        virtual uint256 getBlockHash(int height) = 0;
-
         //! Check that the block is available on disk (i.e. has not been
         //! pruned), and contains transactions.
         virtual bool haveBlockOnDisk(int height) = 0;
@@ -110,6 +107,10 @@ public:
     //! 1 for following block, and so on. Returns nullopt for a block not
     //! included in the current chain.
     virtual Optional<int> getBlockHeight(const uint256& hash) = 0;
+
+    //! Get block hash. Returns nullopt for a block not included in the
+    //! current chain.
+    virtual Optional<uint256> getBlockHash(int height) = 0;
 
     //! Return whether node has the block and optionally return block metadata
     //! or contents.

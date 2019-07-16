@@ -40,13 +40,6 @@ namespace {
 
 class LockImpl : public Chain::Lock, public UniqueLock<RecursiveMutex>
 {
-    uint256 getBlockHash(int height) override
-    {
-        LockAssertion lock(::cs_main);
-        CBlockIndex* block = ::ChainActive()[height];
-        assert(block != nullptr);
-        return block->GetBlockHash();
-    }
     bool haveBlockOnDisk(int height) override
     {
         LockAssertion lock(::cs_main);
@@ -206,6 +199,15 @@ public:
         CBlockIndex* block = LookupBlockIndex(hash);
         if (block && ::ChainActive().Contains(block)) {
             return block->nHeight;
+        }
+        return nullopt;
+    }
+    Optional<uint256> getBlockHash(int height) override
+    {
+        LOCK(::cs_main);
+        CBlockIndex* block = ::ChainActive()[height];
+        if (block != nullptr) {
+            return block->GetBlockHash();
         }
         return nullopt;
     }

@@ -3883,8 +3883,9 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
     }
 
     const Optional<int> tip_height = chain.getHeight();
-    if (tip_height) {
-        walletInstance->m_last_block_processed = locked_chain->getBlockHash(*tip_height);
+    const Optional<uint256> tip_hash = tip_height ? chain.getBlockHash(*tip_height) : nullopt;
+    if (tip_hash) {
+        walletInstance->m_last_block_processed = *tip_hash;
         walletInstance->m_last_block_processed_height = *tip_height;
         int64_t mtp;
         chain.findBlock(walletInstance->m_last_block_processed, nullptr, nullptr, nullptr, &mtp);
@@ -3933,7 +3934,8 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
 
         {
             WalletRescanReserver reserver(walletInstance.get());
-            if (!reserver.reserve() || (ScanResult::SUCCESS != walletInstance->ScanForWalletTransactions(locked_chain->getBlockHash(rescan_height), rescan_height, {} /* max height */, reserver, true /* update */).status)) {
+	    const Optional<uint256> rescan_hash = chain.getBlockHash(rescan_height);
+            if (!reserver.reserve() || !rescan_hash || (ScanResult::SUCCESS != walletInstance->ScanForWalletTransactions(*rescan_hash, rescan_height, {} /* max height */, reserver, true /* update */).status)) {
                 error = _("Failed to rescan the wallet during initialization").translated;
                 return nullptr;
             }

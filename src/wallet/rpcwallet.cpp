@@ -3563,8 +3563,7 @@ UniValue rescanblockchain(const JSONRPCRequest& request)
             stop_height = request.params[1].get_int();
             if (*stop_height < 0 || *stop_height > tip_height) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid stop_height");
-            }
-            else if (*stop_height < start_height) {
+            } else if (stop_height < start_height) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "stop_height must be greater than start_height");
             }
         }
