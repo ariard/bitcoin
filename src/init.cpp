@@ -173,6 +173,7 @@ void Interrupt(NodeContext& node)
         g_txindex->Interrupt();
     }
     ForEachBlockFilterIndex([](BlockFilterIndex& index) { index.Interrupt(); });
+    node.chain->interruptNotifications();
 }
 
 void Shutdown(NodeContext& node)
@@ -203,6 +204,7 @@ void Shutdown(NodeContext& node)
     // using the other before destroying them.
     if (node.peer_logic) UnregisterValidationInterface(node.peer_logic.get());
     if (node.connman) node.connman->Stop();
+    if (node.chain) node.chain->stopNotifications();
 
     StopTorControl();
 
@@ -1747,7 +1749,11 @@ bool AppInitMain(NodeContext& node)
         return false;
     }
 
-    // ********************************************************* Step 12: start node
+    // ********************************************************* Step 12: start servicing rescan requests
+
+    node.chain->startNotifications();
+
+    // ********************************************************* Step 13: start node
 
     int chain_active_height;
 
@@ -1842,7 +1848,7 @@ bool AppInitMain(NodeContext& node)
         LogPrintf("Using /16 prefix for IP bucketing.\n");
     }
 
-    // ********************************************************* Step 13: finished
+    // ********************************************************* Step 14: finished
 
     SetRPCWarmupFinished();
     uiInterface.InitMessage(_("Done loading").translated);
