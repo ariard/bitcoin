@@ -11,6 +11,7 @@
 #include <net.h>
 #include <net_processing.h>
 #include <node/coin.h>
+#include <node/rescan.h>
 #include <policy/fees.h>
 #include <policy/policy.h>
 #include <policy/rbf.h>
@@ -244,6 +245,8 @@ public:
 
 class ChainImpl : public Chain
 {
+private:
+    Rescan m_rescan;
 public:
     std::unique_ptr<Chain::Lock> lock(bool try_lock) override
     {
@@ -349,6 +352,22 @@ public:
     std::unique_ptr<Handler> handleNotifications(Notifications& notifications) override
     {
         return MakeUnique<NotificationsHandlerImpl>(*this, notifications);
+    }
+    void startNotifications() override
+    {
+	m_rescan.StartServiceRequests();
+    }
+    void interruptNotifications() override
+    {
+        m_rescan.InterruptServiceRequests();
+    }
+    void stopNotifications() override
+    {
+	m_rescan.StopServiceRequests();
+    }
+    void registerNotifications(Notifications& callback, const CBlockLocator& locator) override
+    {
+        m_rescan.AddRequest(callback, locator);
     }
     void waitForNotificationsIfNewBlocksConnected(const uint256& old_tip) override
     {
