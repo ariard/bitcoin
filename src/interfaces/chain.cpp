@@ -13,6 +13,7 @@
 #include <node/coin.h>
 #include <node/context.h>
 #include <node/transaction.h>
+#include <node/sync.h>
 #include <policy/fees.h>
 #include <policy/policy.h>
 #include <policy/rbf.h>
@@ -122,6 +123,8 @@ public:
 
 class ChainImpl : public Chain
 {
+private:
+    Sync m_sync;
 public:
     explicit ChainImpl(NodeContext& node) : m_node(node) {}
     Optional<int> getHeight() override
@@ -368,6 +371,22 @@ public:
     std::unique_ptr<Handler> handleNotifications(Notifications& notifications) override
     {
         return MakeUnique<NotificationsHandlerImpl>(*this, notifications);
+    }
+    void startNotifications() override
+    {
+	m_sync.StartServiceRequests();
+    }
+    void interruptNotifications() override
+    {
+        m_sync.InterruptServiceRequests();
+    }
+    void stopNotifications() override
+    {
+	m_sync.StopServiceRequests();
+    }
+    void registerNotifications(Notifications& callback, const CBlockLocator& locator) override
+    {
+        m_sync.AddRequest(callback, locator);
     }
     void waitForNotificationsIfTipChanged(const uint256& old_tip) override
     {

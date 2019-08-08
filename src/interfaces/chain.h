@@ -19,6 +19,7 @@ class CFeeRate;
 class CRPCCommand;
 class CScheduler;
 class Coin;
+class Rescan;
 class uint256;
 enum class RBFTransactionState;
 struct CBlockLocator;
@@ -238,6 +239,18 @@ public:
 
     //! Register handler for notifications.
     virtual std::unique_ptr<Handler> handleNotifications(Notifications& notifications) = 0;
+
+    //! Start notifications sequence in order for every ChainClient, used once by init code.
+    virtual void startNotifications() = 0;
+
+    //! Stop notifications sequence, used once by shutdown code.
+    virtual void stopNotifications() = 0;
+
+    //! Interrupt notification sequence, used once by interrupt code.
+    virtual void interruptNotifications() = 0;
+
+    //! Request notifications.
+    virtual void registerNotifications(interfaces::Chain::Notifications& callback, const CBlockLocator& locator) = 0;
 
     //! Wait for pending notifications to be processed unless block hash points to the current
     //! chain tip.
