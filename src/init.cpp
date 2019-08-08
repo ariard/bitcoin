@@ -155,7 +155,7 @@ static std::unique_ptr<ECCVerifyHandle> globalVerifyHandle;
 static boost::thread_group threadGroup;
 static CScheduler scheduler;
 
-void Interrupt()
+void Interrupt(InitInterfaces& interfaces)
 {
     InterruptHTTPServer();
     InterruptHTTPRPC();
@@ -169,6 +169,7 @@ void Interrupt()
         g_txindex->Interrupt();
     }
     ForEachBlockFilterIndex([](BlockFilterIndex& index) { index.Interrupt(); });
+    interfaces.chain->interruptNotifications();
 }
 
 void Shutdown(InitInterfaces& interfaces)
@@ -201,6 +202,7 @@ void Shutdown(InitInterfaces& interfaces)
     if (g_connman) g_connman->Stop();
     if (g_txindex) g_txindex->Stop();
     ForEachBlockFilterIndex([](BlockFilterIndex& index) { index.Stop(); });
+    interfaces.chain->stopNotifications();
 
     StopTorControl();
 
@@ -1727,7 +1729,11 @@ bool AppInitMain(InitInterfaces& interfaces)
         return false;
     }
 
-    // ********************************************************* Step 12: start node
+    // ********************************************************* Step 12: start servicing rescan requests
+
+    interfaces.chain->startNotifications();
+
+    // ********************************************************* Step 13: start node
 
     int chain_active_height;
 
@@ -1807,7 +1813,7 @@ bool AppInitMain(InitInterfaces& interfaces)
         return false;
     }
 
-    // ********************************************************* Step 13: finished
+    // ********************************************************* Step 14: finished
 
     SetRPCWarmupFinished();
     uiInterface.InitMessage(_("Done loading").translated);

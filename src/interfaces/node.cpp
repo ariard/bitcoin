@@ -78,7 +78,7 @@ public:
     bool appInitMain() override { return AppInitMain(m_interfaces); }
     void appShutdown() override
     {
-        Interrupt();
+        Interrupt(m_interfaces);
         Shutdown(m_interfaces);
     }
     void startShutdown() override { StartShutdown(); }

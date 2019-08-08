@@ -43,13 +43,13 @@ const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
  * Use the buttons <code>Namespaces</code>, <code>Classes</code> or <code>Files</code> at the top of the page to start navigating the code.
  */
 
-static void WaitForShutdown()
+static void WaitForShutdown(InitInterfaces& interfaces)
 {
     while (!ShutdownRequested())
     {
         MilliSleep(200);
     }
-    Interrupt();
+    Interrupt(interfaces);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -172,9 +172,9 @@ static bool AppInit(int argc, char* argv[])
 
     if (!fRet)
     {
-        Interrupt();
+        Interrupt(interfaces);
     } else {
-        WaitForShutdown();
+        WaitForShutdown(interfaces);
     }
     Shutdown(interfaces);
 
