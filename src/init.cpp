@@ -155,7 +155,7 @@ static std::unique_ptr<ECCVerifyHandle> globalVerifyHandle;
 static boost::thread_group threadGroup;
 static CScheduler scheduler;
 
-void Interrupt()
+void Interrupt(InitInterfaces& interfaces)
 {
     InterruptHTTPServer();
     InterruptHTTPRPC();
@@ -169,6 +169,7 @@ void Interrupt()
         g_txindex->Interrupt();
     }
     ForEachBlockFilterIndex([](BlockFilterIndex& index) { index.Interrupt(); });
+    interfaces.chain->interruptNotifications();
 }
 
 void Shutdown(InitInterfaces& interfaces)
@@ -201,6 +202,7 @@ void Shutdown(InitInterfaces& interfaces)
     if (g_connman) g_connman->Stop();
     if (g_txindex) g_txindex->Stop();
     ForEachBlockFilterIndex([](BlockFilterIndex& index) { index.Stop(); });
+    interfaces.chain->stopNotifications();
 
     StopTorControl();
 
@@ -1657,7 +1659,11 @@ bool AppInitMain(InitInterfaces& interfaces)
         }
     }
 
-    // ********************************************************* Step 10: data directory maintenance
+    // ********************************************************* Step 10: start servicing rescan requests
+
+    interfaces.chain->startNotifications();
+
+    // ********************************************************* Step 11: data directory maintenance
 
     // if pruning, unset the service bit and perform the initial blockstore prune
     // after any wallet rescanning has taken place.
@@ -1679,7 +1685,7 @@ bool AppInitMain(InitInterfaces& interfaces)
         nLocalServices = ServiceFlags(nLocalServices | NODE_WITNESS);
     }
 
-    // ********************************************************* Step 11: import blocks
+    // ********************************************************* Step 12: import blocks
 
     if (!CheckDiskSpace(GetDataDir())) {
         InitError(strprintf(_("Error: Disk space is low for %s").translated, GetDataDir()));
@@ -1727,7 +1733,7 @@ bool AppInitMain(InitInterfaces& interfaces)
         return false;
     }
 
-    // ********************************************************* Step 12: start node
+    // ********************************************************* Step 13: start node
 
     int chain_active_height;
 
@@ -1807,7 +1813,7 @@ bool AppInitMain(InitInterfaces& interfaces)
         return false;
     }
 
-    // ********************************************************* Step 13: finished
+    // ********************************************************* Step 14: finished
 
     SetRPCWarmupFinished();
     uiInterface.InitMessage(_("Done loading").translated);

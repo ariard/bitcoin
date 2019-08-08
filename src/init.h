@@ -28,7 +28,7 @@ class thread_group;
 } // namespace boost
 
 /** Interrupt threads */
-void Interrupt();
+void Interrupt(InitInterfaces& interfaces);
 void Shutdown(InitInterfaces& interfaces);
 //!Initialize the logging infrastructure
 void InitLogging();
