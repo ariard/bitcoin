@@ -162,6 +162,7 @@ BITCOIN_CORE_H = \
   node/coinstats.h \
   node/context.h \
   node/psbt.h \
+  node/sync.h \
   node/transaction.h \
   node/utxo_snapshot.h \
   noui.h \
@@ -295,6 +296,7 @@ libbitcoin_server_a_SOURCES = \
   node/coinstats.cpp \
   node/context.cpp \
   node/psbt.cpp \
+  node/sync.cpp \
   node/transaction.cpp \
   noui.cpp \
   policy/fees.cpp \
