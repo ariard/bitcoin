@@ -53,7 +53,8 @@ void Rescan::ThreadServiceRequests()
 					LOCK(cs_main);
 					CBlockIndex* tip = ChainActive().Tip();
 					CBlockIndex* pindex = LookupBlockIndex(block.GetHash());
-					if (tip->nHeight == pindex->nHeight) {
+					if (tip->nHeight == pindex->nHeight) { //XXX: compare against hash to same height on forked branches
+						//callback->UpdatedBlockTip
 						//RegisterValidationInterface(request.first); //TODO: maybe NotificationsHandlerImpl
 						m_request_start.erase(request.first);
 					}
