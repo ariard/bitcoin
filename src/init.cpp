@@ -1636,7 +1636,6 @@ bool AppInitMain(InitInterfaces& interfaces)
     fFeeEstimatesInitialized = true;
 
     // ********************************************************* Step 8: start indexers
-    // TODO: ariard
     if (gArgs.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {
         g_txindex = MakeUnique<TxIndex>(*interfaces.chain, nTxIndexCache, false, fReindex);
         g_txindex->Init();

@@ -8,6 +8,7 @@
 #include <chain.h>
 #include <dbwrapper.h>
 #include <interfaces/chain.h>
+#include <interfaces/handler.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <threadinterrupt.h>
@@ -55,7 +56,7 @@ private:
     interfaces::Chain* m_chain;
 
     /** Registered interfaces::Chain::Notifications handler. */
-    std::unique_ptr<CValidationInterface> m_chain_notifications_handler;
+    std::unique_ptr<interfaces::Handler> m_chain_notifications_handler;
 
     /// Write the current index state (eg. chain block locator and subclass-specific items) to disk.
     ///
@@ -71,7 +72,7 @@ protected:
     explicit BaseIndex(interfaces::Chain& chain) : m_chain(&chain) {}
 
     ///XXX comment somewhere
-    virtual bool Rewind(int forked_height, int ancestor_height);
+    void Rewind(int forked_height, int ancestor_height);
 
     void BlockConnected(const CBlock& block, const std::vector<CTransactionRef>& txn_conflicted,
 		    int height, FlatFilePos block_pos) override;
@@ -81,6 +82,8 @@ protected:
     void UpdatedBlockTip() override;
 
     void ChainStateFlushed(const CBlockLocator& locator) override;
+
+    void HandleNotifications() override;
 
     /// Initialize internal state from the database and block index.
     virtual bool Init();

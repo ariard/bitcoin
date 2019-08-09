@@ -238,7 +238,8 @@ public:
         virtual void BlockDisconnected(const CBlock& block, int height) {}
         virtual void UpdatedBlockTip() {}
         virtual void ChainStateFlushed(const CBlockLocator& locator) {}
-        virtual bool Rewind(int forked_height, int ancestor_height) { return false; }
+        virtual void Rewind(int forked_height, int ancestor_height) {}
+	virtual void HandleNotifications() {}
     };
 
     //! Register handler for notifications.
@@ -254,7 +255,7 @@ public:
     virtual void interruptNotifications() = 0;
 
     //! Request notifications.
-    virtual void registerNotifications(CValidationInterface *callback, const CBlockLocator& locator) = 0;
+    virtual void registerNotifications(interfaces::Chain::Notifications& callback, const CBlockLocator& locator) = 0;
 
     //! Wait for pending notifications to be processed unless block hash points to the current
     //! chain tip, or to a possible descendant of the current chain tip that isn't currently

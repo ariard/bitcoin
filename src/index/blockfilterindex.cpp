@@ -281,7 +281,7 @@ static bool CopyHeightIndexToHashIndex(CDBIterator& db_it, CDBBatch& batch,
     return true;
 }
 
-bool BlockFilterIndex::Rewind(int forked_height, int ancestor_height)
+void BlockFilterIndex::Rewind(int forked_height, int ancestor_height)
 {
     CDBBatch batch(*m_db);
     std::unique_ptr<CDBIterator> db_it(m_db->NewIterator());
@@ -290,14 +290,14 @@ bool BlockFilterIndex::Rewind(int forked_height, int ancestor_height)
     // height index to the hash index so we can still find them when the height index entries are
     // overwritten.
     if (!CopyHeightIndexToHashIndex(*db_it, batch, m_name, ancestor_height, forked_height)) {
-        return false;
+        return ;
     }
 
     // The latest filter position gets written in Commit by the call to the BaseIndex::Rewind.
     // But since this creates new references to the filter, the position should get updated here
     // atomically as well in case Commit fails.
     batch.Write(DB_FILTER_POS, m_next_filter_pos);
-    if (!m_db->WriteBatch(batch)) return false;
+    if (!m_db->WriteBatch(batch)) return ;
 
     return BaseIndex::Rewind(forked_height, ancestor_height);
 }

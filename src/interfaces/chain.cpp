@@ -189,6 +189,7 @@ public:
         const CBlockIndex* index,
         const std::vector<CTransactionRef>& tx_conflicted) override
     {
+	LogPrintf("Notifications: block connected %d\n", index->nHeight);
         m_notifications->BlockConnected(*block, tx_conflicted, index->nHeight, index->GetBlockPos());
     }
     void BlockDisconnected(const std::shared_ptr<const CBlock>& block) override
@@ -201,10 +202,6 @@ public:
         m_notifications->UpdatedBlockTip();
     }
     void ChainStateFlushed(const CBlockLocator& locator) override { m_notifications->ChainStateFlushed(locator); }
-    void Rewind(const CBlockIndex *forked_index, const CBlockIndex *ancestor_index) override
-    {
-        m_notifications->Rewind(forked_index->nHeight, ancestor_index->nHeight);
-    }
     Chain& m_chain;
     Chain::Notifications* m_notifications;
 };
@@ -370,7 +367,7 @@ public:
     {
 	m_rescan.StopServiceRequests();
     }
-    void registerNotifications(CValidationInterface *callback, const CBlockLocator& locator) override
+    void registerNotifications(Notifications& callback, const CBlockLocator& locator) override
     {
         m_rescan.AddRequest(callback, locator);
     }

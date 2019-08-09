@@ -36,7 +36,7 @@ protected:
 
     bool WriteBlock(const CBlock& block, int height, FlatFilePos block_pos, uint256& prev_hash) override;
 
-    bool Rewind(int forked_height, int ancestor_height) override;
+    void Rewind(int forked_height, int ancestor_height) override;
 
     BaseIndex::DB& GetDB() const override { return *m_db; }
 
