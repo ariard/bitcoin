@@ -795,9 +795,6 @@ public:
     /** Registered interfaces::Chain::Notifications handler. */
     std::unique_ptr<interfaces::Handler> m_chain_notifications_handler;
 
-    /** Register the wallet for chain notifications */
-    void handleNotifications();
-
     /** Interface for accessing chain state. */
     interfaces::Chain& chain() const { assert(m_chain); return *m_chain; }
 
@@ -893,6 +890,7 @@ public:
     void BlockConnected(const CBlock& block, const std::vector<CTransactionRef>& vtxConflicted, int height, int64_t median_time_past) override;
     void BlockDisconnected(const CBlock& block, int height, int64_t prev_median_time_past) override;
     void UpdatedBlockTip() override;
+    void HandleNotifications(const CBlockLocator& locator, int height, int64_t median_time_past) override;
     int64_t RescanFromTime(int64_t startTime, const WalletRescanReserver& reserver, bool update);
 
     struct ScanResult {

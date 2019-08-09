@@ -1138,6 +1138,15 @@ void CWallet::UpdatedBlockTip()
 }
 
 
+void CWallet::HandleNotifications(const CBlockLocator& locator, int height, int64_t median_time_past)
+{
+    m_last_block_processed_height = height;
+    m_last_block_processed = locator.vHave.front();
+    m_last_block_median_time_past = median_time_past;
+
+    m_chain_notifications_handler = m_chain->handleNotifications(*this);
+}
+
 void CWallet::BlockUntilSyncedToCurrentChain() {
     AssertLockNotHeld(cs_wallet);
     // Skip the queue-draining stuff if we know we're caught up with
@@ -3844,21 +3853,11 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
 
     LOCK(walletInstance->cs_wallet);
 
-    // Register wallet with validationinterface. It's done before rescan to avoid
-    // missing block connections between end of rescan and validation subscribing.
-    // Because of wallet lock being hold, block connection notifications are going to
-    // be pending on the validation-side until lock release. It's likely to have
-    // block processing duplicata (if rescan block range overlaps with notification one)
-    // but we guarantee at least than wallet state is correct after notifications delivery.
-    // This is temporary until rescan and notifications delivery are unified under same
-    // interface.
-    walletInstance->handleNotifications();
-
     int rescan_height = 0;
+    CBlockLocator locator;
     if (!gArgs.GetBoolArg("-rescan", false))
     {
         WalletBatch batch(*walletInstance->database);
-        CBlockLocator locator;
         if (batch.ReadBestBlock(locator)) {
             if (const Optional<int> fork_height = chain.findLocatorFork(locator)) {
                 rescan_height = *fork_height;
@@ -3959,6 +3958,8 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
         }
     }
 
+    chain.registerNotifications(*walletInstance, const_cast<CBlockLocator&>(locator));
+
     walletInstance->SetBroadcastTransactions(gArgs.GetBoolArg("-walletbroadcast", DEFAULT_WALLETBROADCAST));
 
     {
@@ -3968,11 +3969,6 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
     }
 
     return walletInstance;
-}
-
-void CWallet::handleNotifications()
-{
-    m_chain_notifications_handler = m_chain->handleNotifications(*this);
 }
 
 void CWallet::postInitProcess()
