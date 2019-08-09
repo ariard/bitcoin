@@ -189,11 +189,12 @@ public:
         const CBlockIndex* index,
         const std::vector<CTransactionRef>& tx_conflicted) override
     {
-        m_notifications->BlockConnected(*block, tx_conflicted);
+        m_notifications->BlockConnected(*block, tx_conflicted, index->nHeight, index->GetBlockPos());
     }
     void BlockDisconnected(const std::shared_ptr<const CBlock>& block) override
     {
-        m_notifications->BlockDisconnected(*block);
+	    ///XXX: pickup your commit
+        m_notifications->BlockDisconnected(*block, 0);
     }
     void UpdatedBlockTip(const CBlockIndex* index, const CBlockIndex* fork_index, bool is_ibd) override
     {
