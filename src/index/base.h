@@ -5,7 +5,9 @@
 #ifndef BITCOIN_INDEX_BASE_H
 #define BITCOIN_INDEX_BASE_H
 
+#include <chain.h>
 #include <dbwrapper.h>
+#include <interfaces/chain.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <threadinterrupt.h>
@@ -19,7 +21,7 @@ class CBlockIndex;
  * CValidationInterface and ensures blocks are indexed sequentially according
  * to their position in the active chain.
  */
-class BaseIndex : public CValidationInterface
+class BaseIndex : public CValidationInterface, private interfaces::Chain::Notifications
 {
 protected:
     class DB : public CDBWrapper
@@ -44,6 +46,14 @@ private:
     /// The last block in the chain that the index is in sync with.
     std::atomic<const CBlockIndex*> m_best_block_index{nullptr};
 
+    /// Height of last block processed used by
+    int m_last_block_processed_height = -1;
+
+    uint256 m_last_block_processed;
+
+    /// Last time we write locator on disk XXX
+    int64_t m_last_locator_write_time = 0;
+
     std::thread m_thread_sync;
     CThreadInterrupt m_interrupt;
 
@@ -65,24 +75,27 @@ private:
     bool Commit();
 
 protected:
-    void BlockConnected(const std::shared_ptr<const CBlock>& block, const CBlockIndex* pindex,
-                        const std::vector<CTransactionRef>& txn_conflicted) override;
+    ///XXX comment somewhere
+    virtual bool Rewind(int forked_height, int ancestor_height);
 
-    void ChainStateFlushed(const CBlockLocator& locator) override;
+    void BlockConnected(const CBlock& block, const std::vector<CTransactionRef>& txn_conflicted,
+		    int height, FlatFilePos block_pos) override;
+
+    void BlockDisconnected(const CBlock& block, int height) override;
+
+    void UpdatedBlockTip() override;
 
     /// Initialize internal state from the database and block index.
     virtual bool Init();
 
+    virtual bool WriteBlock(const CBlock& block, const CBlockIndex *pindex);
+
     /// Write update index entries for a newly connected block.
-    virtual bool WriteBlock(const CBlock& block, const CBlockIndex* pindex) { return true; }
+    virtual bool WriteBlock(const CBlock& block, int height, const FlatFilePos block_pos, uint256& prev_block) { return true; }
 
     /// Virtual method called internally by Commit that can be overridden to atomically
     /// commit more index state.
     virtual bool CommitInternal(CDBBatch& batch);
-
-    /// Rewind index to an earlier chain tip during a chain reorg. The tip must
-    /// be an ancestor of the current best block.
-    virtual bool Rewind(const CBlockIndex* current_tip, const CBlockIndex* new_tip);
 
     virtual DB& GetDB() const = 0;
 
