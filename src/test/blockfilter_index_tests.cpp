@@ -26,7 +26,7 @@ static bool ComputeFilter(BlockFilterType filter_type, const CBlockIndex* block_
     }
 
     CBlockUndo block_undo;
-    if (block_index->nHeight > 0 && !UndoReadFromDisk(block_undo, block_index)) {
+    if (block_index->nHeight > 0 && !UndoReadFromDisk(block_undo, block_index->GetUndoPos(), pindex->prev->GetBlockHash())) {
         return false;
     }
 

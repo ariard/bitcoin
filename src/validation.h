@@ -373,7 +373,7 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus
 bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const FlatFilePos& pos, const CMessageHeader::MessageStartChars& message_start);
 bool ReadRawBlockFromDisk(std::vector<uint8_t>& block, const CBlockIndex* pindex, const CMessageHeader::MessageStartChars& message_start);
 
-bool UndoReadFromDisk(CBlockUndo& blockundo, const CBlockIndex* pindex);
+bool UndoReadFromDisk(CBlockUndo& blockundo, FlatFilePos pos, uint256 prev_hash);
 
 /** Functions for validating blocks and updating the block tree */
 
