@@ -212,25 +212,24 @@ size_t BlockFilterIndex::WriteFilterToDisk(FlatFilePos& pos, const BlockFilter& 
     return data_size;
 }
 
-bool BlockFilterIndex::WriteBlock(const CBlock& block, const CBlockIndex* pindex)
+bool BlockFilterIndex::WriteBlock(const CBlock& block, int height, FlatFilePos block_pos, uint256& prev_hash)
 {
     CBlockUndo block_undo;
     uint256 prev_header;
 
-    if (pindex->nHeight > 0) {
-        if (!UndoReadFromDisk(block_undo, pindex)) {
+    if (height > 0) {
+        if (!UndoReadFromDisk(block_undo, block_pos, prev_hash)) {
             return false;
         }
 
         std::pair<uint256, DBVal> read_out;
-        if (!m_db->Read(DBHeightKey(pindex->nHeight - 1), read_out)) {
+        if (!m_db->Read(DBHeightKey(height - 1), read_out)) {
             return false;
         }
 
-        uint256 expected_block_hash = pindex->pprev->GetBlockHash();
-        if (read_out.first != expected_block_hash) {
+        if (read_out.first != prev_hash) {
             return error("%s: previous block header belongs to unexpected block %s; expected %s",
-                         __func__, read_out.first.ToString(), expected_block_hash.ToString());
+                         __func__, read_out.first.ToString(), prev_hash.ToString());
         }
 
         prev_header = read_out.second.header;
@@ -242,12 +241,12 @@ bool BlockFilterIndex::WriteBlock(const CBlock& block, const CBlockIndex* pindex
     if (bytes_written == 0) return false;
 
     std::pair<uint256, DBVal> value;
-    value.first = pindex->GetBlockHash();
+    value.first = block.GetBlockHeader().GetHash();
     value.second.hash = filter.GetHash();
     value.second.header = filter.ComputeHeader(prev_header);
     value.second.pos = m_next_filter_pos;
 
-    if (!m_db->Write(DBHeightKey(pindex->nHeight), value)) {
+    if (!m_db->Write(DBHeightKey(height), value)) {
         return false;
     }
 
@@ -281,17 +280,15 @@ static bool CopyHeightIndexToHashIndex(CDBIterator& db_it, CDBBatch& batch,
     return true;
 }
 
-bool BlockFilterIndex::Rewind(const CBlockIndex* current_tip, const CBlockIndex* new_tip)
+bool BlockFilterIndex::Rewind(int forked_height, int ancestor_height)
 {
-    assert(current_tip->GetAncestor(new_tip->nHeight) == new_tip);
-
     CDBBatch batch(*m_db);
     std::unique_ptr<CDBIterator> db_it(m_db->NewIterator());
 
     // During a reorg, we need to copy all filters for blocks that are getting disconnected from the
     // height index to the hash index so we can still find them when the height index entries are
     // overwritten.
-    if (!CopyHeightIndexToHashIndex(*db_it, batch, m_name, new_tip->nHeight, current_tip->nHeight)) {
+    if (!CopyHeightIndexToHashIndex(*db_it, batch, m_name, ancestor_height, forked_height)) {
         return false;
     }
 
@@ -301,7 +298,7 @@ bool BlockFilterIndex::Rewind(const CBlockIndex* current_tip, const CBlockIndex*
     batch.Write(DB_FILTER_POS, m_next_filter_pos);
     if (!m_db->WriteBatch(batch)) return false;
 
-    return BaseIndex::Rewind(current_tip, new_tip);
+    return BaseIndex::Rewind(forked_height, ancestor_height);
 }
 
 static bool LookupOne(const CDBWrapper& db, const CBlockIndex* block_index, DBVal& result)
