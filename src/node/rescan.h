@@ -20,7 +20,7 @@ class CBlockIndex;
 class Rescan
 {
 private:
-	std::map<interfaces::Chain::Notifications*, const CBlockIndex*> m_request_start;
+	std::map<CValidationInterface *, const CBlockIndex*> m_request_start;
 	std::thread threadServiceRequests;
 	CThreadInterrupt m_interrupt;
 
@@ -30,7 +30,7 @@ private:
 public:
 	//! Add rescan request, using the passed callback handler to reditect block to, starting from
 	//! locator.
-	void	AddRequest(interfaces::Chain::Notifications& callback, const CBlockLocator& locator);
+	void	AddRequest(CValidationInterface *callback, const CBlockLocator& locator);
 
 	//! Start thread worker to replay blocks for registered requester.
 	//TODO: we may use a thread pool with master - multiple worker

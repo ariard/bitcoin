@@ -28,7 +28,7 @@ void Rescan::ThreadServiceRequests()
 				ancestor = ChainActive().FindFork(request.second);
 			}
 			if (ancestor && ancestor->nHeight != (request.second)->nHeight) {
-				(request.first)->Rewind((request.second)->nHeight, ancestor->nHeight);
+				(request.first)->Rewind(request.second, ancestor);
 				request.second = ancestor;
 			}
 			if (!min_start || min_start->nHeight > (request.second)->nHeight) {
@@ -47,7 +47,7 @@ void Rescan::ThreadServiceRequests()
 				ReadBlockFromDisk(block, next, consensus_params);
 				for (auto& request : m_request_start) {
 					//XXX: do we assume reorgs ? need to clearer to avoid wallet inconsistencies
-					(request.first)->BlockConnected(block, {}, next->nHeight, next->GetBlockPos());
+					(request.first)->BlockConnected(block, next, {});
 					request.second = next;
 					// To avoid any race condition where callback would miss block connection,
 					// we compare against tip and register validation interface in one sequence
@@ -55,8 +55,8 @@ void Rescan::ThreadServiceRequests()
 					CBlockIndex* tip = ChainActive().Tip();
 					CBlockIndex* pindex = LookupBlockIndex(block.GetHash());
 					if (tip->nHeight == pindex->nHeight) { //XXX: compare against hash to same height on forked branches
-						(request.first)->UpdatedBlockTip();
-						//RegisterValidationInterface(request.first); //TODO: maybe NotificationsHandlerImpl
+						(request.first)->UpdatedBlockTip(tip, pindex, false); // We pass pindex, we should be equal to tip
+						RegisterValidationInterface(request.first);
 						m_request_start.erase(request.first);
 					}
 				}
@@ -72,9 +72,9 @@ void Rescan::ThreadServiceRequests()
 	}
 }
 
-void Rescan::AddRequest(interfaces::Chain::Notifications& callback, const CBlockLocator& locator) {
+void Rescan::AddRequest(CValidationInterface *callback, const CBlockLocator& locator) {
 	LOCK(cs_main);
-	m_request_start[&callback] = FindForkInGlobalIndex(::ChainActive(), locator);
+	m_request_start[callback] = FindForkInGlobalIndex(::ChainActive(), locator);
 }
 
 void Rescan::StartServiceRequests() {

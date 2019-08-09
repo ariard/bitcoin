@@ -57,13 +57,11 @@ bool BaseIndex::Init()
         LOCK(cs_main);
 	CBlockIndex *pindex = FindForkInGlobalIndex(::ChainActive(), locator);
         m_last_block_processed_height = pindex->nHeight;
-	m_synced = pindex == ::ChainActive().Tip();
-    } else {
-	m_synced = false;
     }
-    if (!m_synced) {
-	    //XXX verify how we handle null locator
-        //m_chain->registerNotifications(locator);
+    m_chain_notifications_handler = m_chain->handleNotifications(*this);
+    if (m_chain_notifications_handler) {
+	//XXX verify how we handle null locator
+        m_chain->registerNotifications(m_chain_notifications_handler.get(), const_cast<CBlockLocator&>(locator));
     }
     return true;
 }

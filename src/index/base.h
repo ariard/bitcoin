@@ -21,7 +21,7 @@ class CBlockIndex;
  * CValidationInterface and ensures blocks are indexed sequentially according
  * to their position in the active chain.
  */
-class BaseIndex : public CValidationInterface, private interfaces::Chain::Notifications
+class BaseIndex : private interfaces::Chain::Notifications
 {
 protected:
     class DB : public CDBWrapper
@@ -53,6 +53,9 @@ private:
 
     /** Interface for accessing chain state. */
     interfaces::Chain* m_chain;
+
+    /** Registered interfaces::Chain::Notifications handler. */
+    std::unique_ptr<CValidationInterface> m_chain_notifications_handler;
 
     /// Write the current index state (eg. chain block locator and subclass-specific items) to disk.
     ///

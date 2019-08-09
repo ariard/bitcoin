@@ -8,6 +8,7 @@
 #include <chain.h>                  // For FlatFilePos
 #include <optional.h>               // For Optional and nullopt
 #include <primitives/transaction.h> // For CTransactionRef
+#include <validationinterface.h>    // For CValidationInterface
 
 #include <memory>
 #include <stddef.h>
@@ -253,7 +254,7 @@ public:
     virtual void interruptNotifications() = 0;
 
     //! Request notifications.
-    virtual void registerNotifications(Notifications& callback, const CBlockLocator& locator) = 0;
+    virtual void registerNotifications(CValidationInterface *callback, const CBlockLocator& locator) = 0;
 
     //! Wait for pending notifications to be processed unless block hash points to the current
     //! chain tip, or to a possible descendant of the current chain tip that isn't currently
