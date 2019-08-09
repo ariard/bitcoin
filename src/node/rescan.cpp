@@ -55,13 +55,14 @@ void Rescan::ThreadServiceRequests()
 					CBlockIndex* pindex = LookupBlockIndex(block.GetHash());
 					if (tip->nHeight == pindex->nHeight) { //XXX: compare against hash to same height on forked branches
 						//callback->UpdatedBlockTip
-						//RegisterValidationInterface(request.first); //TODO: maybe NotificationsHandlerImpl
+						RegisterValidationInterface(request.first); //TODO: maybe NotificationsHandlerImpl
 						m_request_start.erase(request.first);
 					}
 				}
 			}
 		}
 	}
+	//ChainStateFlushed for all, let's them commit !
 }
 
 void Rescan::AddRequest(interfaces::Chain::Notifications& callback, const CBlockLocator& locator) {

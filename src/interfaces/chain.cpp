@@ -193,7 +193,7 @@ public:
     }
     void BlockDisconnected(const std::shared_ptr<const CBlock>& block) override
     {
-	    ///XXX: pickup your commit
+	///XXX: pickup my commit in #15931
         m_notifications->BlockDisconnected(*block, 0);
     }
     void UpdatedBlockTip(const CBlockIndex* index, const CBlockIndex* fork_index, bool is_ibd) override

@@ -69,93 +69,6 @@ bool BaseIndex::Init()
     return true;
 }
 
-static const CBlockIndex* NextSyncBlock(const CBlockIndex* pindex_prev) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
-{
-    AssertLockHeld(cs_main);
-
-    if (!pindex_prev) {
-        return ::ChainActive().Genesis();
-    }
-
-    const CBlockIndex* pindex = ::ChainActive().Next(pindex_prev);
-    if (pindex) {
-        return pindex;
-    }
-
-    return ::ChainActive().Next(::ChainActive().FindFork(pindex_prev));
-}
-
-void BaseIndex::ThreadSync()
-{
-    const CBlockIndex* pindex = m_best_block_index.load();
-    if (!m_synced) {
-        auto& consensus_params = Params().GetConsensus();
-
-        int64_t last_log_time = 0;
-        int64_t last_locator_write_time = 0;
-        while (true) {
-            if (m_interrupt) {
-                m_best_block_index = pindex;
-                // No need to handle errors in Commit. If it fails, the error will be already be
-                // logged. The best way to recover is to continue, as index cannot be corrupted by
-                // a missed commit to disk for an advanced index state.
-                Commit();
-                return;
-            }
-
-            {
-                LOCK(cs_main);
-                const CBlockIndex* pindex_next = NextSyncBlock(pindex);
-                if (!pindex_next) {
-                    m_best_block_index = pindex;
-                    m_synced = true;
-                    // No need to handle errors in Commit. See rationale above.
-                    Commit();
-                    break;
-                }
-                if (pindex_next->pprev != pindex && !Rewind(pindex->nHeight, pindex_next->pprev->nHeight)) {
-                    FatalError("%s: Failed to rewind index %s to a previous chain tip",
-                               __func__, GetName());
-                    return;
-                }
-                pindex = pindex_next;
-            }
-
-            int64_t current_time = GetTime();
-            if (last_log_time + SYNC_LOG_INTERVAL < current_time) {
-                LogPrintf("Syncing %s with block chain from height %d\n",
-                          GetName(), pindex->nHeight);
-                last_log_time = current_time;
-            }
-
-            if (last_locator_write_time + SYNC_LOCATOR_WRITE_INTERVAL < current_time) {
-                m_best_block_index = pindex;
-                last_locator_write_time = current_time;
-                // No need to handle errors in Commit. See rationale above.
-                Commit();
-            }
-
-            CBlock block;
-            if (!ReadBlockFromDisk(block, pindex, consensus_params)) {
-                FatalError("%s: Failed to read block %s from disk",
-                           __func__, pindex->GetBlockHash().ToString());
-                return;
-            }
-            if (!WriteBlock(block, pindex)) {
-                FatalError("%s: Failed to write block %s to index database",
-                           __func__, pindex->GetBlockHash().ToString());
-                return;
-            }
-        }
-    }
-
-    if (pindex) {
-        LogPrintf("%s is enabled at height %d\n", GetName(), pindex->nHeight);
-    } else {
-        LogPrintf("%s is enabled\n", GetName());
-    }
-}
-
 bool BaseIndex::Commit()
 {
     CDBBatch batch(GetDB());
@@ -249,42 +162,9 @@ bool BaseIndex::BlockUntilSyncedToCurrentChain()
     }
 
     //XXX We want to be sure that event queue is drained before to go further
+    //XXX: wait for commit on refactoring to clean it
 
     LogPrintf("%s: %s is catching up on block notifications\n", __func__, GetName());
     SyncWithValidationInterfaceQueue();
     return true;
-}
-
-//XXX: dumb function to remove in next commit
-bool BaseIndex::WriteBlock(const CBlock& block, const CBlockIndex *pindex)
-{
-	return false;
-}
-
-void BaseIndex::Interrupt()
-{
-    m_interrupt();
-}
-
-void BaseIndex::Start()
-{
-    // Need to register this ValidationInterface before running Init(), so that
-    // callbacks are not missed if Init sets m_synced to true.
-    RegisterValidationInterface(this);
-    if (!Init()) {
-        FatalError("%s: %s failed to initialize", __func__, GetName());
-        return;
-    }
-
-    m_thread_sync = std::thread(&TraceThread<std::function<void()>>, GetName(),
-                                std::bind(&BaseIndex::ThreadSync, this));
-}
-
-void BaseIndex::Stop()
-{
-    UnregisterValidationInterface(this);
-
-    if (m_thread_sync.joinable()) {
-        m_thread_sync.join();
-    }
 }
