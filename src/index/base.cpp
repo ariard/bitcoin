@@ -46,12 +46,6 @@ void BaseIndex::DB::WriteBestBlock(CDBBatch& batch, const CBlockLocator& locator
     batch.Write(DB_BEST_BLOCK, locator);
 }
 
-BaseIndex::~BaseIndex()
-{
-    Interrupt();
-    Stop();
-}
-
 bool BaseIndex::Init()
 {
     CBlockLocator locator;
@@ -59,13 +53,18 @@ bool BaseIndex::Init()
         locator.SetNull();
     }
 
-    LOCK(cs_main);
-    if (locator.IsNull()) {
-        m_best_block_index = nullptr;
+    if (!locator.IsNull()) {
+        LOCK(cs_main);
+	CBlockIndex *pindex = FindForkInGlobalIndex(::ChainActive(), locator);
+        m_last_block_processed_height = pindex->nHeight;
+	m_synced = pindex == ::ChainActive().Tip();
     } else {
-        m_best_block_index = FindForkInGlobalIndex(::ChainActive(), locator);
+	m_synced = false;
     }
-    m_synced = m_best_block_index.load() == ::ChainActive().Tip();
+    if (!m_synced) {
+	    //XXX verify how we handle null locator
+        //m_chain->registerNotifications(locator);
+    }
     return true;
 }
 
@@ -145,7 +144,12 @@ void BaseIndex::BlockDisconnected(const CBlock& block, int height) {
 	//XXX: think about blocckfilters/txindex
 }
 
-/// delete ChainStateFlushed is ok?
+void BaseIndex::ChainStateFlushed(const CBlockLocator& locator) {
+    // No need to handle errors in Commit. If it fails, the error will be already be
+    // logged. The best way to recover is to continue, as index cannot be corrupted by
+    // a missed commit to disk for an advanced index state.
+    Commit();
+}
 
 void BaseIndex::UpdatedBlockTip()
 {

@@ -96,9 +96,10 @@ struct DBHashKey {
 
 static std::map<BlockFilterType, BlockFilterIndex> g_filter_indexes;
 
-BlockFilterIndex::BlockFilterIndex(BlockFilterType filter_type,
+BlockFilterIndex::BlockFilterIndex(BlockFilterType filter_type, interfaces::Chain& chain,
                                    size_t n_cache_size, bool f_memory, bool f_wipe)
-    : m_filter_type(filter_type)
+    : BaseIndex(chain),
+      m_filter_type(filter_type)
 {
     const std::string& filter_name = BlockFilterTypeName(filter_type);
     if (filter_name.empty()) throw std::invalid_argument("unknown filter_type");
@@ -443,12 +444,12 @@ void ForEachBlockFilterIndex(std::function<void (BlockFilterIndex&)> fn)
     for (auto& entry : g_filter_indexes) fn(entry.second);
 }
 
-bool InitBlockFilterIndex(BlockFilterType filter_type,
+bool InitBlockFilterIndex(BlockFilterType filter_type, interfaces::Chain& chain,
                           size_t n_cache_size, bool f_memory, bool f_wipe)
 {
     auto result = g_filter_indexes.emplace(std::piecewise_construct,
                                            std::forward_as_tuple(filter_type),
-                                           std::forward_as_tuple(filter_type,
+                                           std::forward_as_tuple(filter_type, chain,
                                                                  n_cache_size, f_memory, f_wipe));
     return result.second;
 }

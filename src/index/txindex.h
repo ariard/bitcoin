@@ -23,8 +23,6 @@ private:
     const std::unique_ptr<DB> m_db;
 
 protected:
-    /// Override base class init to migrate from old database.
-    bool Init() override;
 
     bool WriteBlock(const CBlock& block, int height, FlatFilePos block_pos, uint256& prev_hash) override;
 
@@ -33,8 +31,11 @@ protected:
     const char* GetName() const override { return "txindex"; }
 
 public:
+    /// Override base class init to migrate from old database.
+    bool Init() override;
+
     /// Constructs the index, which becomes available to be queried.
-    explicit TxIndex(size_t n_cache_size, bool f_memory = false, bool f_wipe = false);
+    explicit TxIndex(interfaces::Chain& chain, size_t n_cache_size, bool f_memory = false, bool f_wipe = false);
 
     // Destructor is declared because this class contains a unique_ptr to an incomplete type.
     virtual ~TxIndex() override;

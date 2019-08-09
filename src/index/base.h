@@ -51,6 +51,9 @@ private:
     /// Last time we write locator on disk XXX
     int64_t m_last_locator_write_time = 0;
 
+    /** Interface for accessing chain state. */
+    interfaces::Chain* m_chain;
+
     /// Write the current index state (eg. chain block locator and subclass-specific items) to disk.
     ///
     /// Recommendations for error handling:
@@ -62,6 +65,8 @@ private:
     bool Commit();
 
 protected:
+    explicit BaseIndex(interfaces::Chain& chain) : m_chain(&chain) {}
+
     ///XXX comment somewhere
     virtual bool Rewind(int forked_height, int ancestor_height);
 
@@ -72,10 +77,10 @@ protected:
 
     void UpdatedBlockTip() override;
 
+    void ChainStateFlushed(const CBlockLocator& locator) override;
+
     /// Initialize internal state from the database and block index.
     virtual bool Init();
-
-    virtual bool WriteBlock(const CBlock& block, const CBlockIndex *pindex);
 
     /// Write update index entries for a newly connected block.
     virtual bool WriteBlock(const CBlock& block, int height, const FlatFilePos block_pos, uint256& prev_block) { return true; }

@@ -17,7 +17,7 @@ void Rescan::ThreadServiceRequests()
 	while (!m_interrupt) {
 		// Loop for earliest start positions.
 		const CBlockIndex* min_start = nullptr;
-		const CBlockIndex* fork = nullptr;
+		const CBlockIndex* ancestor = nullptr;
 		for (auto& request : m_request_start) {
 			if (!request.second) {
 				m_request_start.erase(request.first);
@@ -25,11 +25,11 @@ void Rescan::ThreadServiceRequests()
 			}
 			{
 				LOCK(cs_main);
-				fork = ChainActive().FindFork(request.second);
+				ancestor = ChainActive().FindFork(request.second);
 			}
-			if (fork && fork->nHeight != (request.second)->nHeight) {
-				//callback->Rewind(start, fork);
-				request.second = fork;
+			if (ancestor && ancestor->nHeight != (request.second)->nHeight) {
+				(request.first)->Rewind((request.second)->nHeight, ancestor->nHeight);
+				request.second = ancestor;
 			}
 			if (!min_start || min_start->nHeight > (request.second)->nHeight) {
 				min_start = request.second;
@@ -46,7 +46,8 @@ void Rescan::ThreadServiceRequests()
 				CBlock block;
 				ReadBlockFromDisk(block, next, consensus_params);
 				for (auto& request : m_request_start) {
-					//callback->BlockConnected(block);
+					//XXX: do we assume reorgs ? need to clearer to avoid wallet inconsistencies
+					(request.first)->BlockConnected(block, {}, next->nHeight, next->GetBlockPos());
 					request.second = next;
 					// To avoid any race condition where callback would miss block connection,
 					// we compare against tip and register validation interface in one sequence
@@ -54,15 +55,21 @@ void Rescan::ThreadServiceRequests()
 					CBlockIndex* tip = ChainActive().Tip();
 					CBlockIndex* pindex = LookupBlockIndex(block.GetHash());
 					if (tip->nHeight == pindex->nHeight) { //XXX: compare against hash to same height on forked branches
-						//callback->UpdatedBlockTip
-						RegisterValidationInterface(request.first); //TODO: maybe NotificationsHandlerImpl
+						(request.first)->UpdatedBlockTip();
+						//RegisterValidationInterface(request.first); //TODO: maybe NotificationsHandlerImpl
 						m_request_start.erase(request.first);
 					}
 				}
 			}
 		}
 	}
-	//ChainStateFlushed for all, let's them commit !
+	// Be nice, let's requesters who need it, commit their database to leave
+	for (auto& request : m_request_start) {
+		if (!request.second) continue;
+		LOCK(cs_main);
+		CBlockLocator locator = ::ChainActive().GetLocator(request.second);
+		(request.first)->ChainStateFlushed(locator);
+	}
 }
 
 void Rescan::AddRequest(interfaces::Chain::Notifications& callback, const CBlockLocator& locator) {
