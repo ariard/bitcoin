@@ -31,21 +31,23 @@ private:
     size_t WriteFilterToDisk(FlatFilePos& pos, const BlockFilter& filter);
 
 protected:
-    bool Init() override;
 
     bool CommitInternal(CDBBatch& batch) override;
 
-    bool WriteBlock(const CBlock& block, const CBlockIndex* pindex) override;
+    bool WriteBlock(const CBlock& block, int height, FlatFilePos undo_pos, uint256& prev_hash) override;
 
-    bool Rewind(const CBlockIndex* current_tip, const CBlockIndex* new_tip) override;
+    void Rewind(int forked_height, int ancestor_height) override;
 
     BaseIndex::DB& GetDB() const override { return *m_db; }
 
     const char* GetName() const override { return m_name.c_str(); }
 
 public:
+    /// Initialize internal state from the database and block index.
+    bool Init() override;
+
     /** Constructs the index, which becomes available to be queried. */
-    explicit BlockFilterIndex(BlockFilterType filter_type,
+    explicit BlockFilterIndex(BlockFilterType filter_type, interfaces::Chain& chain,
                               size_t n_cache_size, bool f_memory = false, bool f_wipe = false);
 
     BlockFilterType GetFilterType() const { return m_filter_type; }
@@ -78,7 +80,7 @@ void ForEachBlockFilterIndex(std::function<void (BlockFilterIndex&)> fn);
  * Initialize a block filter index for the given type if one does not already exist. Returns true if
  * a new index is created and false if one has already been initialized.
  */
-bool InitBlockFilterIndex(BlockFilterType filter_type,
+bool InitBlockFilterIndex(BlockFilterType filter_type, interfaces::Chain& chain,
                           size_t n_cache_size, bool f_memory = false, bool f_wipe = false);
 
 /**

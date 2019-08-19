@@ -6,6 +6,8 @@
 #define BITCOIN_INDEX_BASE_H
 
 #include <dbwrapper.h>
+#include <interfaces/chain.h>
+#include <interfaces/handler.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <threadinterrupt.h>
@@ -19,7 +21,7 @@ class CBlockIndex;
  * CValidationInterface and ensures blocks are indexed sequentially according
  * to their position in the active chain.
  */
-class BaseIndex : public CValidationInterface
+class BaseIndex : private interfaces::Chain::Notifications
 {
 protected:
     class DB : public CDBWrapper
@@ -41,18 +43,20 @@ private:
     /// ValidationInterface notifications to stay in sync.
     std::atomic<bool> m_synced{false};
 
-    /// The last block in the chain that the index is in sync with.
-    std::atomic<const CBlockIndex*> m_best_block_index{nullptr};
+    /** Height of last block processed */
+    int m_last_block_processed_height = -1;
 
-    std::thread m_thread_sync;
-    CThreadInterrupt m_interrupt;
+    /** Hash of last block processed */
+    uint256 m_last_block_processed;
 
-    /// Sync the index with the block index starting from the current best block.
-    /// Intended to be run in its own thread, m_thread_sync, and can be
-    /// interrupted with m_interrupt. Once the index gets in sync, the m_synced
-    /// flag is set and the BlockConnected ValidationInterface callback takes
-    /// over and the sync thread exits.
-    void ThreadSync();
+    /** Last time we write locator on disk */
+    int64_t m_last_locator_write_time = 0;
+
+    /** Interface for accessing chain state. */
+    interfaces::Chain* m_chain;
+
+    /** Registered interfaces::Chain::Notifications handler. */
+    std::unique_ptr<interfaces::Handler> m_chain_notifications_handler;
 
     /// Write the current index state (eg. chain block locator and subclass-specific items) to disk.
     ///
@@ -64,25 +68,32 @@ private:
     /// getting corrupted.
     bool Commit();
 
-protected:
-    void BlockConnected(const std::shared_ptr<const CBlock>& block, const CBlockIndex* pindex,
-                        const std::vector<CTransactionRef>& txn_conflicted) override;
+
+    void BlockConnected(const CBlock& block, const std::vector<CTransactionRef>& txn_conflicted, int height, FlatFilePos block_pos) override;
+
+    void BlockDisconnected(const CBlock& block, int height) override;
+
+    void UpdatedBlockTip() override;
 
     void ChainStateFlushed(const CBlockLocator& locator) override;
 
+    void HandleNotifications() override;
+
+protected:
+
+    explicit BaseIndex(interfaces::Chain& chain) : m_chain(&chain) {}
+
+    void Rewind(int forked_height, int ancestor_height);
     /// Initialize internal state from the database and block index.
     virtual bool Init();
 
     /// Write update index entries for a newly connected block.
     virtual bool WriteBlock(const CBlock& block, const CBlockIndex* pindex) { return true; }
-
+    /// Write update index entries for a newly connected block.
+    virtual bool WriteBlock(const CBlock& block, int height, const FlatFilePos undo_pos, uint256& prev_block) { return true; }
     /// Virtual method called internally by Commit that can be overridden to atomically
     /// commit more index state.
     virtual bool CommitInternal(CDBBatch& batch);
-
-    /// Rewind index to an earlier chain tip during a chain reorg. The tip must
-    /// be an ancestor of the current best block.
-    virtual bool Rewind(const CBlockIndex* current_tip, const CBlockIndex* new_tip);
 
     virtual DB& GetDB() const = 0;
 
@@ -90,8 +101,6 @@ protected:
     virtual const char* GetName() const = 0;
 
 public:
-    /// Destructor interrupts sync thread if running and blocks until it exits.
-    virtual ~BaseIndex();
 
     /// Blocks the current thread until the index is caught up to the current
     /// state of the block chain. This only blocks if the index has gotten in
@@ -99,15 +108,6 @@ public:
     /// queue. If the index is catching up from far behind, this method does
     /// not block and immediately returns false.
     bool BlockUntilSyncedToCurrentChain();
-
-    void Interrupt();
-
-    /// Start initializes the sync state and registers the instance as a
-    /// ValidationInterface so that it stays in sync with blockchain updates.
-    void Start();
-
-    /// Stops the instance from staying in sync with blockchain updates.
-    void Stop();
 };
 
 #endif // BITCOIN_INDEX_BASE_H

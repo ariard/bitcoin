@@ -165,10 +165,6 @@ void Interrupt(InitInterfaces& interfaces)
     InterruptMapPort();
     if (g_connman)
         g_connman->Interrupt();
-    if (g_txindex) {
-        g_txindex->Interrupt();
-    }
-    ForEachBlockFilterIndex([](BlockFilterIndex& index) { index.Interrupt(); });
     interfaces.chain->interruptNotifications();
 }
 
@@ -200,8 +196,6 @@ void Shutdown(InitInterfaces& interfaces)
     // using the other before destroying them.
     if (peerLogic) UnregisterValidationInterface(peerLogic.get());
     if (g_connman) g_connman->Stop();
-    if (g_txindex) g_txindex->Stop();
-    ForEachBlockFilterIndex([](BlockFilterIndex& index) { index.Stop(); });
     interfaces.chain->stopNotifications();
 
     StopTorControl();
@@ -1643,13 +1637,13 @@ bool AppInitMain(InitInterfaces& interfaces)
 
     // ********************************************************* Step 8: start indexers
     if (gArgs.GetBoolArg("-txindex", DEFAULT_TXINDEX)) {
-        g_txindex = MakeUnique<TxIndex>(nTxIndexCache, false, fReindex);
-        g_txindex->Start();
+        g_txindex = MakeUnique<TxIndex>(*interfaces.chain, nTxIndexCache, false, fReindex);
+        g_txindex->Init();
     }
 
     for (const auto& filter_type : g_enabled_filter_types) {
-        InitBlockFilterIndex(filter_type, filter_index_cache, false, fReindex);
-        GetBlockFilterIndex(filter_type)->Start();
+        InitBlockFilterIndex(filter_type, *interfaces.chain, filter_index_cache, false, fReindex);
+        GetBlockFilterIndex(filter_type)->Init();
     }
 
     // ********************************************************* Step 9: load wallet
