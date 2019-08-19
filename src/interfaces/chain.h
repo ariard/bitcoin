@@ -233,6 +233,7 @@ public:
         virtual void BlockDisconnected(const CBlock& block, int height, int64_t prev_median_time_past) {}
         virtual void UpdatedBlockTip() {}
         virtual void ChainStateFlushed(const CBlockLocator& locator) {}
+        virtual void HandleNotifications(const CBlockLocator& locator, int height, int64_t median_time_past) {}
     };
 
     //! Register handler for notifications.
