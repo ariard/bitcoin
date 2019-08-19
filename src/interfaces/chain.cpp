@@ -188,7 +188,7 @@ public:
         const CBlockIndex* index,
         const std::vector<CTransactionRef>& tx_conflicted) override
     {
-        m_notifications->BlockConnected(*block, tx_conflicted, index->nHeight);
+        m_notifications->BlockConnected(*block, tx_conflicted, index->nHeight, index->GetUndoPos());
     }
     void BlockDisconnected(const std::shared_ptr<const CBlock>& block, const CBlockIndex* index) override
     {
