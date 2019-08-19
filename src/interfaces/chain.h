@@ -237,6 +237,7 @@ public:
         virtual void UpdatedBlockTip() {}
         virtual void ChainStateFlushed(const CBlockLocator& locator) {}
         virtual void Rewind(int forked_height, int ancestor_height) {}
+        virtual void HandleNotifications() {}
     };
 
     //! Register handler for notifications.
