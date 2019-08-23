@@ -303,5 +303,22 @@ BOOST_AUTO_TEST_CASE(LocalAddress_BasicLifecycle)
     BOOST_CHECK_EQUAL(IsLocal(addr), false);
 }
 
+BOOST_AUTO_TEST_CASE(PoissonNextSend)
+{
+    g_mock_deterministic_tests = true;
+
+    int64_t now = 5000;
+    int average_interval_seconds = 600;
+
+    std::chrono::microseconds now_chrono = std::chrono::microseconds{now};
+    std::chrono::seconds interval_chrono = std::chrono::seconds{average_interval_seconds};
+
+    auto poisson = ::PoissonNextSend(now, average_interval_seconds);
+    std::chrono::microseconds poisson_chrono = ::PoissonNextSend(now_chrono, interval_chrono);
+
+    BOOST_CHECK_EQUAL(poisson, poisson_chrono.count());
+
+    g_mock_deterministic_tests = false;
+}
 
 BOOST_AUTO_TEST_SUITE_END()
