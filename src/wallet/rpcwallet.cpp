@@ -151,6 +151,15 @@ static void WalletTxToJSON(interfaces::Chain& chain, interfaces::Chain::Lock& lo
     entry.pushKV("walletconflicts", conflicts);
     entry.pushKV("time", wtx.GetTxTime());
     entry.pushKV("timereceived", (int64_t)wtx.nTimeReceived);
+    if (wtx.isUnconfirmed()) {
+        entry.pushKV("status", "UNCONFIRMED");
+    } else if (wtx.isConfirmed()) {
+        entry.pushKV("status", "CONFIRMED");
+    } else if (wtx.isConflicted()) {
+        entry.pushKV("status", "CONFLICTED");
+    } else if (wtx.isAbandoned()) {
+        entry.pushKV("status", "ABANDONED");
+    }
 
     // Add opt-in RBF status
     std::string rbfStatus = "no";
