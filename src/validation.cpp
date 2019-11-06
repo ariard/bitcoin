@@ -760,8 +760,21 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         // to be secure by simply only having two immediately-spendable
         // outputs - one for each counterparty. For more info on the uses for
         // this, see https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2018-November/016518.html
-        if (nSize >  EXTRA_DESCENDANT_TX_SIZE_LIMIT ||
-                !m_pool.CalculateMemPoolAncestors(*entry, setAncestors, 2, m_limit_ancestor_size, m_limit_descendants + 1, m_limit_descendant_size + EXTRA_DESCENDANT_TX_SIZE_LIMIT, dummy_err_string)) {
+
+        // Verify CPFP transaction is spending carve-out output tagged by contracting/payment channels parties to
+        // avoid a single-party spend on a N-party pre-signed transaction being used as a malicious carve-out
+        // output to stuck the parent transaction with a not-good-enough feerate CPFP.
+        // See, https://github.com/lightningnetwork/lightning-rfc/pull/688#issuecomment-549480380
+        bool fSpendsTaggedOutput = true;
+        for (const CTxIn& txin : tx.vin) {
+            if (txin.prevout.n != 0) {
+                fSpendsTaggedOutput = false;
+                break;
+            }
+        }
+
+        if (!fSpendsTaggedOutput || nSize > EXTRA_DESCENDANT_TX_SIZE_LIMIT ||
+            !m_pool.CalculateMemPoolAncestors(*entry, setAncestors, 2, m_limit_ancestor_size, m_limit_descendants + 1, m_limit_descendant_size + EXTRA_DESCENDANT_TX_SIZE_LIMIT, dummy_err_string)) {
             return state.Invalid(TxValidationResult::TX_MEMPOOL_POLICY, "too-long-mempool-chain", errString);
         }
     }
