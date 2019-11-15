@@ -413,7 +413,6 @@ enum DisconnectResult
     DISCONNECT_FAILED   // Something else went wrong.
 };
 
-class ConnectTrace;
 typedef std::vector<std::pair<std::shared_ptr<const CBlock>, CBlockIndex*>> BlocksTrace;
 
 /** @see CChainState::FlushStateToDisk */
