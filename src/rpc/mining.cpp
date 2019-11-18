@@ -708,24 +708,6 @@ static UniValue getblocktemplate(const JSONRPCRequest& request)
     return result;
 }
 
-class submitblock_StateCatcher : public CValidationInterface
-{
-public:
-    uint256 hash;
-    bool found;
-    BlockValidationState state;
-
-    explicit submitblock_StateCatcher(const uint256 &hashIn) : hash(hashIn), found(false), state() {}
-
-protected:
-    void BlockChecked(const CBlock& block, const BlockValidationState& stateIn) override {
-        if (block.GetHash() != hash)
-            return;
-        found = true;
-        state = stateIn;
-    }
-};
-
 static UniValue submitblock(const JSONRPCRequest& request)
 {
     // We allow 2 arguments for compliance with BIP22. Argument 2 is ignored.
@@ -776,21 +758,20 @@ static UniValue submitblock(const JSONRPCRequest& request)
     }
 
     bool new_block;
-    submitblock_StateCatcher sc(block.GetHash());
-    RegisterValidationInterface(&sc);
     BlockValidationState dos_state;
     bool accepted = ProcessNewBlock(Params(), blockptr, dos_state, /* fForceProcessing */ true, /* fNewBlock */ &new_block);
-    UnregisterValidationInterface(&sc);
     if (!new_block && accepted) {
         return "duplicate";
     }
     if (!dos_state.IsValid()) {
         return BIP22ValidationResult(dos_state);
     }
-    if (!sc.found) {
-        return "inconclusive";
+    {
+        LOCK(cs_main);
+        const CBlockIndex* pindex = LookupBlockIndex(block.GetHash());
+        if (!::ChainActive().Contains(pindex)) return "inconclusive";
     }
-    return BIP22ValidationResult(sc.state);
+    return BIP22ValidationResult(dos_state);
 }
 
 static UniValue submitheader(const JSONRPCRequest& request)
