@@ -133,13 +133,6 @@ protected:
      */
     virtual void ChainStateFlushed(const CBlockLocator &locator) {}
     /**
-     * Notifies listeners of a block validation result.
-     * If the provided BlockValidationState IsValid, the provided block
-     * is guaranteed to be the current best block at the time the
-     * callback was generated (not necessarily now)
-     */
-    virtual void BlockChecked(const CBlock&, const BlockValidationState&) {}
-    /**
      * Notifies listeners that a block which builds directly on our current tip
      * has been received and connected to the headers tree, though not validated yet */
     virtual void NewPoWValidBlock(const CBlockIndex *pindex, const std::shared_ptr<const CBlock>& block) {};

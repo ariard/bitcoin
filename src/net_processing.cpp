@@ -1285,10 +1285,6 @@ static void BlockChecked(const CBlock& block, const BlockValidationState& state,
         mapBlockSource.erase(it);
 }
 
-void PeerLogicValidation::BlockChecked(const CBlock& block, const BlockValidationState& state) {
-    ::BlockChecked(block, state, connman);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 //
 // Messages

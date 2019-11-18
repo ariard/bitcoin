@@ -40,10 +40,6 @@ public:
     /**
      * Overridden from CValidationInterface.
      */
-    void BlockChecked(const CBlock& block, const BlockValidationState& state) override;
-    /**
-     * Overridden from CValidationInterface.
-     */
     void NewPoWValidBlock(const CBlockIndex *pindex, const std::shared_ptr<const CBlock>& pblock) override;
 
     /** Initialize a peer by adding it to mapNodeState and pushing a message requesting its version */
