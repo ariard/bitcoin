@@ -14,6 +14,8 @@
 
 #include <boost/signals2/signal.hpp>
 
+#include <unordered_map>
+
 enum class OutputType;
 
 // Wallet storage things that ScriptPubKeyMans need in order to be able to store things to the wallet database.
@@ -132,6 +134,17 @@ public:
     }
 };
 
+class KeyIDHasher
+{
+public:
+    KeyIDHasher() {}
+
+    size_t operator()(const CKeyID& id) const
+    {
+        return id.GetUint64(0);
+    }
+};
+
 /*
  * A class implementing ScriptPubKeyMan manages some (or all) scriptPubKeys used in a wallet.
  * It contains the scripts and keys related to the scriptPubKeys it manages.
@@ -237,6 +250,7 @@ private:
 
     /* the HD chain data model (external chain counters) */
     CHDChain hdChain;
+    std::unordered_map<CKeyID, CHDChain, KeyIDHasher> m_inactive_hd_chains;
 
     /* HD derive new child key (on internal or external chain) */
     void DeriveNewChildKey(WalletBatch& batch, CKeyMetadata& metadata, CKey& secret, CHDChain& hd_chain, bool internal = false) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
@@ -332,6 +346,7 @@ public:
     /* Set the HD chain model (chain child index counters) */
     void SetHDChain(const CHDChain& chain, bool memonly);
     const CHDChain& GetHDChain() const { return hdChain; }
+    void AddInactiveHDChain(const CHDChain& chain, bool memonly);
 
     //! Adds a watch-only address to the store, without saving it to disk (used by LoadWallet)
     bool LoadWatchOnly(const CScript &dest);

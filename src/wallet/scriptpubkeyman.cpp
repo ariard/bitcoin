@@ -732,10 +732,26 @@ bool LegacyScriptPubKeyMan::AddWatchOnly(const CScript& dest, int64_t nCreateTim
 void LegacyScriptPubKeyMan::SetHDChain(const CHDChain& chain, bool memonly)
 {
     LOCK(cs_wallet);
-    if (!memonly && !WalletBatch(m_storage.GetDatabase()).WriteHDChain(chain))
-        throw std::runtime_error(std::string(__func__) + ": writing chain failed");
+    if (!memonly) {
+        if (!WalletBatch(m_storage.GetDatabase()).WriteHDChain(chain)) {
+            throw std::runtime_error(std::string(__func__) + ": writing chain failed");
+        }
+        if (!hdChain.seed_id.IsNull()) {
+            AddInactiveHDChain(hdChain, false);
+        }
+    }
 
     hdChain = chain;
+}
+
+void LegacyScriptPubKeyMan::AddInactiveHDChain(const CHDChain& chain, bool memonly)
+{
+    LOCK(cs_wallet);
+    if (!memonly && !WalletBatch(m_storage.GetDatabase()).WriteInactiveHDChain(chain))
+        throw std::runtime_error(std::string(__func__) + ": writing inactive chain failed");
+
+    assert(!chain.seed_id.IsNull());
+    m_inactive_hd_chains[chain.seed_id] = chain;
 }
 
 bool LegacyScriptPubKeyMan::HaveKey(const CKeyID &address) const
@@ -904,8 +920,13 @@ void LegacyScriptPubKeyMan::DeriveNewChildKey(WalletBatch &batch, CKeyMetadata& 
     std::copy(master_id.begin(), master_id.begin() + 4, metadata.key_origin.fingerprint);
     metadata.has_key_origin = true;
     // update the chain model in the database
-    if (!batch.WriteHDChain(hd_chain))
-        throw std::runtime_error(std::string(__func__) + ": Writing HD chain model failed");
+    if (hd_chain.seed_id == hdChain.seed_id) {
+        if (!batch.WriteHDChain(hd_chain))
+            throw std::runtime_error(std::string(__func__) + ": Writing HD chain model failed");
+    } else {
+        if (!batch.WriteInactiveHDChain(hd_chain))
+            throw std::runtime_error(std::string(__func__) + ": Writing HD chain model failed");
+    }
 }
 
 void LegacyScriptPubKeyMan::LoadKeyPool(int64_t nIndex, const CKeyPool &keypool)
