@@ -152,5 +152,74 @@ class WalletHDTest(BitcoinTestFramework):
         assert_raises_rpc_error(-5, "Already have this key", self.nodes[1].sethdseed, False, new_seed)
         assert_raises_rpc_error(-5, "Already have this key", self.nodes[1].sethdseed, False, self.nodes[1].dumpprivkey(self.nodes[1].getnewaddress()))
 
+        self.log.info('Test sethdseed restoring with keys outside of the intial keypool')
+        self.nodes[0].generate(10)
+        # Restart node 1 with keypool of 5 and a different wallet
+        self.nodes[1].createwallet(wallet_name='origin', blank=True)
+        self.stop_node(1)
+        self.start_node(1, extra_args=['-keypool=3', '-wallet=origin'])
+        connect_nodes(self.nodes[0], 1)
+
+        # sethdseed restoring and seeing txs to addresses out of the keypool
+        origin_rpc = self.nodes[1].get_wallet_rpc('origin')
+        seed = self.nodes[0].dumpprivkey(self.nodes[0].getnewaddress())
+        origin_rpc.sethdseed(True, seed)
+
+        self.nodes[1].createwallet(wallet_name='restore', blank=True)
+        restore_rpc = self.nodes[1].get_wallet_rpc('restore')
+        restore_rpc.sethdseed(True, seed)
+        restore_rpc.sethdseed(True)
+
+        # Check persistence of inactive seed
+        restore_rpc.unloadwallet()
+        self.nodes[1].loadwallet('restore')
+        restore_rpc = self.nodes[1].get_wallet_rpc('restore')
+
+        # Empty keypool and get an address that is beyond the initial keypool
+        origin_rpc.getnewaddress()
+        origin_rpc.getnewaddress()
+        last_addr = origin_rpc.getnewaddress()
+        addr = origin_rpc.getnewaddress()
+
+        # Check that the restored seed does not have addr but does have last_addr
+        info = restore_rpc.getaddressinfo(last_addr)
+        assert_equal(info['ismine'], True)
+        info = restore_rpc.getaddressinfo(addr)
+        assert_equal(info['ismine'], False)
+        info = origin_rpc.getaddressinfo(addr)
+        assert_equal(info['ismine'], True)
+
+        txid = self.nodes[0].sendtoaddress(addr, 1)
+        origin_rpc.sendrawtransaction(self.nodes[0].gettransaction(txid)['hex'])
+        self.nodes[0].generate(1)
+        origin_rpc.gettransaction(txid)
+        assert_raises_rpc_error(-5, 'Invalid or non-wallet transaction id', restore_rpc.gettransaction, txid)
+        out_of_kp_txid = txid
+
+        txid = self.nodes[0].sendtoaddress(last_addr, 1)
+        origin_rpc.sendrawtransaction(self.nodes[0].gettransaction(txid)['hex'])
+        self.nodes[0].generate(1)
+        origin_rpc.gettransaction(txid)
+        restore_rpc.gettransaction(txid)
+        assert_raises_rpc_error(-5, 'Invalid or non-wallet transaction id', restore_rpc.gettransaction, out_of_kp_txid)
+
+        restore_rpc.rescanblockchain()
+        restore_rpc.gettransaction(out_of_kp_txid)
+        info = restore_rpc.getaddressinfo(addr)
+        assert_equal(info['ismine'], True)
+
+        # Check again that 3 keys were derived.
+        # Empty keypool and get an address that is beyond the initial keypool
+        origin_rpc.getnewaddress()
+        origin_rpc.getnewaddress()
+        last_addr = origin_rpc.getnewaddress()
+        addr = origin_rpc.getnewaddress()
+
+        # Check that the restored seed does not have addr but does have last_addr
+        info = restore_rpc.getaddressinfo(last_addr)
+        assert_equal(info['ismine'], True)
+        info = restore_rpc.getaddressinfo(addr)
+        assert_equal(info['ismine'], False)
+
 if __name__ == '__main__':
     WalletHDTest().main ()
