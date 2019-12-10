@@ -74,6 +74,11 @@ std::vector<CKeyID> GetAffectedKeys(const CScript& spk, const SigningProvider& p
  * keys (by default 1000) ahead of the last used key and scans for the
  * addresses of those keys.  This avoids the risk of not seeing transactions
  * involving the wallet's addresses, or of re-using the same address.
+ * In the unlikely case where none of the address in the `gap limit` would
+ * be used onchain, the look-ahead wouldn't be incremented to keep
+ * a constant-size and address beyond this range wouldn't be detected by an
+ * old backup, that's why it's not recommended to decreease keypool size lower
+ * than default value.
  *
  * The HD-split wallet feature added a second keypool (commit: 02592f4c). There
  * is an external keypool (for addresses to hand out) and an internal keypool
