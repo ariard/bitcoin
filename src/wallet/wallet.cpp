@@ -1101,7 +1101,7 @@ void CWallet::TransactionRemovedFromMempool(const CTransactionRef &ptx) {
     }
 }
 
-void CWallet::BlockConnected(const CBlock& block, const std::vector<CTransactionRef>& vtxConflicted, int height)
+void CWallet::BlockConnected(const CBlock& block, const std::vector<CTransactionRef>& vtxConflicted, int height, int64_t median_time_past)
 {
     const uint256& block_hash = block.GetHash();
     auto locked_chain = chain().lock();
@@ -1109,6 +1109,7 @@ void CWallet::BlockConnected(const CBlock& block, const std::vector<CTransaction
 
     m_last_block_processed_height = height;
     m_last_block_processed = block_hash;
+    m_last_block_median_time_past = median_time_past;
     for (size_t index = 0; index < block.vtx.size(); index++) {
         CWalletTx::Confirmation confirm(CWalletTx::Status::CONFIRMED, height, block_hash, index);
         SyncTransaction(block.vtx[index], confirm);
@@ -1119,7 +1120,7 @@ void CWallet::BlockConnected(const CBlock& block, const std::vector<CTransaction
     }
 }
 
-void CWallet::BlockDisconnected(const CBlock& block, int height)
+void CWallet::BlockDisconnected(const CBlock& block, int height, int64_t prev_median_time_past)
 {
     auto locked_chain = chain().lock();
     LOCK(cs_wallet);
@@ -1130,6 +1131,7 @@ void CWallet::BlockDisconnected(const CBlock& block, int height)
     // future with a stickier abandoned state or even removing abandontransaction call.
     m_last_block_processed_height = height - 1;
     m_last_block_processed = block.hashPrevBlock;
+    m_last_block_median_time_past = prev_median_time_past;
     for (const CTransactionRef& ptx : block.vtx) {
         CWalletTx::Confirmation confirm(CWalletTx::Status::UNCONFIRMED, /* block_height */ 0, {}, /* nIndex */ 0);
         SyncTransaction(ptx, confirm);
@@ -3882,9 +3884,13 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
     if (tip_height) {
         walletInstance->m_last_block_processed = locked_chain->getBlockHash(*tip_height);
         walletInstance->m_last_block_processed_height = *tip_height;
+        int64_t mtp;
+        chain.findBlock(walletInstance->m_last_block_processed, nullptr, nullptr, nullptr, &mtp);
+        walletInstance->m_last_block_median_time_past = mtp;
     } else {
         walletInstance->m_last_block_processed.SetNull();
         walletInstance->m_last_block_processed_height = -1;
+        walletInstance->m_last_block_median_time_past = 0;
     }
 
     if (tip_height && *tip_height != rescan_height)

@@ -148,11 +148,11 @@ public:
         const CBlockIndex* index,
         const std::vector<CTransactionRef>& tx_conflicted) override
     {
-        m_notifications->BlockConnected(*block, tx_conflicted, index->nHeight);
+        m_notifications->BlockConnected(*block, tx_conflicted, index->nHeight, index->GetMedianTimePast());
     }
     void BlockDisconnected(const std::shared_ptr<const CBlock>& block, const CBlockIndex* index) override
     {
-        m_notifications->BlockDisconnected(*block, index->nHeight);
+        m_notifications->BlockDisconnected(*block, index->nHeight, index->pprev->GetMedianTimePast());
     }
     void UpdatedBlockTip(const CBlockIndex* index, const CBlockIndex* fork_index, bool is_ibd) override
     {
