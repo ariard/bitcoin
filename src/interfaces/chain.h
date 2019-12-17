@@ -105,9 +105,6 @@ public:
         //! which will either be the original block used to create the locator,
         //! or one of its ancestors.
         virtual Optional<int> findLocatorFork(const CBlockLocator& locator) = 0;
-
-        //! Check if transaction will be final given chain height current time.
-        virtual bool checkFinalTx(const CTransaction& tx) = 0;
     };
 
     //! Return Lock interface. Chain is locked when this is called, and

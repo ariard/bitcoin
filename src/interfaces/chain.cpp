@@ -111,11 +111,6 @@ class LockImpl : public Chain::Lock, public UniqueLock<RecursiveMutex>
         }
         return nullopt;
     }
-    bool checkFinalTx(const CTransaction& tx) override
-    {
-        LockAssertion lock(::cs_main);
-        return CheckFinalTx(tx);
-    }
 
     using UniqueLock::UniqueLock;
 };

@@ -7,6 +7,7 @@
 
 #include <chain.h>
 #include <consensus/consensus.h>
+#include <consensus/tx_check.h>
 #include <consensus/validation.h>
 #include <fs.h>
 #include <interfaces/chain.h>
@@ -1901,14 +1902,16 @@ bool CWalletTx::InMempool() const
 
 bool CWalletTx::IsTrusted(interfaces::Chain::Lock& locked_chain) const
 {
+    AssertLockHeld(pwallet->cs_wallet);
     std::set<uint256> s;
     return IsTrusted(locked_chain, s);
 }
 
 bool CWalletTx::IsTrusted(interfaces::Chain::Lock& locked_chain, std::set<uint256>& trusted_parents) const
 {
+    AssertLockHeld(pwallet->cs_wallet);
     // Quick answer in most cases
-    if (!locked_chain.checkFinalTx(*tx)) return false;
+    if (!pwallet->CheckFinalWalletTx(*tx)) return false;
     int nDepth = GetDepthInMainChain();
     if (nDepth >= 1) return true;
     if (nDepth < 0) return false;
@@ -2074,7 +2077,7 @@ void CWallet::AvailableCoins(interfaces::Chain::Lock& locked_chain, std::vector<
         const uint256& wtxid = entry.first;
         const CWalletTx& wtx = entry.second;
 
-        if (!locked_chain.checkFinalTx(*wtx.tx)) {
+        if (!CheckFinalWalletTx(*wtx.tx)) {
             continue;
         }
 
@@ -4045,6 +4048,29 @@ bool CWalletTx::IsImmatureCoinBase() const
 {
     // note GetBlocksToMaturity is 0 for non-coinbase tx
     return GetBlocksToMaturity() > 0;
+}
+
+bool CWalletTx::isFinal() const
+{
+    AssertLockHeld(pwallet->cs_wallet);
+    return pwallet->CheckFinalWalletTx(*tx);
+}
+
+bool CWallet::CheckFinalWalletTx(const CTransaction& tx) const
+{
+    AssertLockHeld(cs_wallet);
+    // Wallet not doing historical validation work, it's only
+    // interested by the nLocktime evaluation as enforced on
+    // current chain tip (BIP 113). In the future, if there
+    // is forks changing this, wallet should be updated.
+
+    // CheckFinalWalletTx() uses m_last_block_processed_height +1
+    // to evaluate nLockTime because when IsFinalTx() is called within
+    // CBlock::AcceptBlock(), the height of the block *being*
+    // evaluated is what is used. Thus if we want to know if a
+    // transaction can be part of the *next* block, we need to call
+    // IsFinalTx() with one more than m_last_block_processed_height.
+    return IsFinalTx(tx, m_last_block_processed_height + 1, m_last_block_median_time_past);
 }
 
 std::vector<OutputGroup> CWallet::GroupOutputs(const std::vector<COutput>& outputs, bool single_coin) const {
