@@ -38,11 +38,6 @@
 namespace interfaces {
 namespace {
 
-class LockImpl : public Chain::Lock, public UniqueLock<RecursiveMutex>
-{
-    using UniqueLock::UniqueLock;
-};
-
 class NotificationsHandlerImpl : public Handler, CValidationInterface
 {
 public:
@@ -129,14 +124,6 @@ class ChainImpl : public Chain
 {
 public:
     explicit ChainImpl(NodeContext& node) : m_node(node) {}
-    std::unique_ptr<Chain::Lock> lock(bool try_lock) override
-    {
-        auto result = MakeUnique<LockImpl>(::cs_main, "cs_main", __FILE__, __LINE__, try_lock);
-        if (try_lock && result && !*result) return {};
-        // std::move necessary on some compilers due to conversion from
-        // LockImpl to Lock pointer
-        return std::move(result);
-    }
     Optional<int> getHeight() override
     {
         LOCK(cs_main);
