@@ -1135,14 +1135,41 @@ void CWallet::BlockDisconnected(const CBlock& block, int height, int64_t prev_me
 void CWallet::UpdatedBlockTip()
 {
     m_best_block_time = GetTime();
-}
 
+}
 
 void CWallet::HandleNotifications(const CBlockLocator& locator, int height, int64_t median_time_past)
 {
     m_last_block_processed_height = height;
     m_last_block_processed = locator.vHave.front();
     m_last_block_median_time_past = median_time_past;
+
+    // Restore wallet transaction metadata after -zapwallettxes=1
+    if (gArgs.GetBoolArg("-zapwallettxes", false) && gArgs.GetArg("-zapwallettxes", "1") != "2")
+    {
+        WalletBatch batch(*database);
+
+        for (const CWalletTx& wtxOld : m_pending_zaptx)
+        {
+            uint256 hash = wtxOld.GetHash();
+            std::map<uint256, CWalletTx>::iterator mi = mapWallet.find(hash);
+            if (mi != mapWallet.end())
+            {
+                const CWalletTx* copyFrom = &wtxOld;
+                CWalletTx* copyTo = &mi->second;
+                copyTo->mapValue = copyFrom->mapValue;
+                copyTo->vOrderForm = copyFrom->vOrderForm;
+                copyTo->nTimeReceived = copyFrom->nTimeReceived;
+                copyTo->nTimeSmart = copyFrom->nTimeSmart;
+                copyTo->fFromMe = copyFrom->fFromMe;
+                copyTo->nOrderPos = copyFrom->nOrderPos;
+                batch.WriteTx(*copyTo);
+            }
+        }
+    }
+
+    ChainStateFlushed(locator);
+    database->IncrementUpdateCounter();
 
     m_chain_notifications_handler = m_chain->handleNotifications(*this);
 }
@@ -3634,11 +3661,11 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
 
     // needed to restore wallet transaction meta data after -zapwallettxes
     std::vector<CWalletTx> vWtx;
-
     if (gArgs.GetBoolArg("-zapwallettxes", false)) {
         chain.initMessage(_("Zapping all transactions from wallet...").translated);
 
         std::unique_ptr<CWallet> tempWallet = MakeUnique<CWallet>(&chain, location, WalletDatabase::Create(location.GetPath()));
+
         DBErrors nZapWalletRet = tempWallet->ZapWalletTx(vWtx);
         if (nZapWalletRet != DBErrors::LOAD_OK) {
             error = strprintf(_("Error loading %s: Wallet corrupted").translated, walletFile);
@@ -3679,6 +3706,8 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
             return nullptr;
         }
     }
+
+    walletInstance->m_pending_zaptx.swap(vWtx);
 
     int prev_version = walletInstance->GetVersion();
     if (gArgs.GetBoolArg("-upgradewallet", fFirstRun))
@@ -3853,102 +3882,12 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
 
     LOCK(walletInstance->cs_wallet);
 
-    int rescan_height = 0;
+    // We want to keep rescan feature for know
     CBlockLocator locator;
     if (!gArgs.GetBoolArg("-rescan", false))
     {
         WalletBatch batch(*walletInstance->database);
-        if (batch.ReadBestBlock(locator)) {
-            if (const Optional<int> fork_height = chain.findLocatorFork(locator)) {
-                rescan_height = *fork_height;
-            }
-        }
-    }
-
-    const Optional<int> tip_height = chain.getHeight();
-    const Optional<uint256> tip_hash = tip_height ? chain.getBlockHash(*tip_height) : nullopt;
-    if (tip_hash) {
-        walletInstance->m_last_block_processed = *tip_hash;
-        walletInstance->m_last_block_processed_height = *tip_height;
-        int64_t mtp;
-        chain.findBlock(walletInstance->m_last_block_processed, nullptr, nullptr, nullptr, &mtp);
-        walletInstance->m_last_block_median_time_past = mtp;
-    } else {
-        walletInstance->m_last_block_processed.SetNull();
-        walletInstance->m_last_block_processed_height = -1;
-        walletInstance->m_last_block_median_time_past = 0;
-    }
-
-    if (tip_height && *tip_height != rescan_height)
-    {
-        // We can't rescan beyond non-pruned blocks, stop and throw an error.
-        // This might happen if a user uses an old wallet within a pruned node
-        // or if they ran -disablewallet for a longer time, then decided to re-enable
-        if (chain.havePruned()) {
-            // Exit early and print an error.
-            // If a block is pruned after this check, we will load the wallet,
-            // but fail the rescan with a generic error.
-            int block_height = *tip_height;
-            while (block_height > 0 && chain.haveBlockOnDisk(block_height - 1) && rescan_height != block_height) {
-                --block_height;
-            }
-
-            if (rescan_height != block_height) {
-                error = _("Prune: last wallet synchronisation goes beyond pruned data. You need to -reindex (download the whole blockchain again in case of pruned node)").translated;
-                return nullptr;
-            }
-        }
-
-        chain.initMessage(_("Rescanning...").translated);
-        walletInstance->WalletLogPrintf("Rescanning last %i blocks (from block %i)...\n", *tip_height - rescan_height, rescan_height);
-
-        // No need to read and scan block if block was created before
-        // our wallet birthday (as adjusted for block time variability)
-        Optional<int64_t> time_first_key;
-        for (auto spk_man : walletInstance->GetAllScriptPubKeyMans()) {
-            int64_t time = spk_man->GetTimeFirstKey();
-            if (!time_first_key || time < *time_first_key) time_first_key = time;
-        }
-        if (time_first_key) {
-            if (Optional<int> first_block = chain.findFirstBlockHeightWithTimeAndHeight(*time_first_key - TIMESTAMP_WINDOW, rescan_height, nullptr)) {
-                rescan_height = *first_block;
-            }
-        }
-
-        {
-            WalletRescanReserver reserver(walletInstance.get());
-	    const Optional<uint256> rescan_hash = chain.getBlockHash(rescan_height);
-            if (!reserver.reserve() || !rescan_hash || (ScanResult::SUCCESS != walletInstance->ScanForWalletTransactions(*rescan_hash, rescan_height, {} /* max height */, reserver, true /* update */).status)) {
-                error = _("Failed to rescan the wallet during initialization").translated;
-                return nullptr;
-            }
-        }
-        walletInstance->ChainStateFlushed(chain.getTipLocator());
-        walletInstance->database->IncrementUpdateCounter();
-
-        // Restore wallet transaction metadata after -zapwallettxes=1
-        if (gArgs.GetBoolArg("-zapwallettxes", false) && gArgs.GetArg("-zapwallettxes", "1") != "2")
-        {
-            WalletBatch batch(*walletInstance->database);
-
-            for (const CWalletTx& wtxOld : vWtx)
-            {
-                uint256 hash = wtxOld.GetHash();
-                std::map<uint256, CWalletTx>::iterator mi = walletInstance->mapWallet.find(hash);
-                if (mi != walletInstance->mapWallet.end())
-                {
-                    const CWalletTx* copyFrom = &wtxOld;
-                    CWalletTx* copyTo = &mi->second;
-                    copyTo->mapValue = copyFrom->mapValue;
-                    copyTo->vOrderForm = copyFrom->vOrderForm;
-                    copyTo->nTimeReceived = copyFrom->nTimeReceived;
-                    copyTo->nTimeSmart = copyFrom->nTimeSmart;
-                    copyTo->fFromMe = copyFrom->fFromMe;
-                    copyTo->nOrderPos = copyFrom->nOrderPos;
-                    batch.WriteTx(*copyTo);
-                }
-            }
-        }
+	batch.ReadBestBlock(locator);
     }
 
     {
@@ -3958,6 +3897,7 @@ std::shared_ptr<CWallet> CWallet::CreateWalletFromFile(interfaces::Chain& chain,
         }
     }
 
+    //XXX: let pass wallet birthday instead of allocator
     chain.registerNotifications(*walletInstance, const_cast<CBlockLocator&>(locator));
 
     walletInstance->SetBroadcastTransactions(gArgs.GetBoolArg("-walletbroadcast", DEFAULT_WALLETBROADCAST));

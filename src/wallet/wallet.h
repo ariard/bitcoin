@@ -725,6 +725,8 @@ private:
     // ScriptPubKeyMan::GetID. In many cases it will be the hash of an internal structure
     std::map<uint256, std::unique_ptr<ScriptPubKeyMan>> m_spk_managers;
 
+    std::vector<CWalletTx> m_pending_zaptx;
+
 public:
     /*
      * Main wallet lock.
