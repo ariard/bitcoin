@@ -1174,6 +1174,16 @@ void CWallet::HandleNotifications(const CBlockLocator& locator, int height, int6
     m_chain_notifications_handler = m_chain->handleNotifications(*this);
 }
 
+void CWallet::RescanBlock(const CBlock& block, int height)
+{
+	LOCK(cs_wallet);
+
+        for (size_t index = 0; index < block.vtx.size(); index++) {
+            CWalletTx::Confirmation confirm(CWalletTx::Status::CONFIRMED, height, block.GetHash(), index);
+            SyncTransaction(block.vtx[index], confirm);
+        }
+}
+
 void CWallet::BlockUntilSyncedToCurrentChain() {
     AssertLockNotHeld(cs_wallet);
     // Skip the queue-draining stuff if we know we're caught up with
