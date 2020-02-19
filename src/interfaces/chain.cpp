@@ -13,6 +13,7 @@
 #include <node/coin.h>
 #include <node/context.h>
 #include <node/transaction.h>
+#include <node/rescan.h>
 #include <node/sync.h>
 #include <policy/fees.h>
 #include <policy/policy.h>
@@ -125,6 +126,7 @@ class ChainImpl : public Chain
 {
 private:
     Sync m_sync;
+    Rescan m_rescan;
 public:
     explicit ChainImpl(NodeContext& node) : m_node(node) {}
     Optional<int> getHeight() override
@@ -375,18 +377,25 @@ public:
     void startNotifications() override
     {
 	m_sync.StartServiceRequests();
+	m_rescan.StartRescanRequests();
     }
     void interruptNotifications() override
     {
         m_sync.InterruptServiceRequests();
+	m_rescan.InterruptRescanRequests();
     }
     void stopNotifications() override
     {
 	m_sync.StopServiceRequests();
+	m_rescan.RescanRequests();
     }
     void registerNotifications(Notifications& callback, const CBlockLocator& locator) override
     {
         m_sync.AddRequest(callback, locator);
+    }
+    void registerRescan(Notifications& callback, int64_t startTime, int* startheight, int* stop_height) = 0;
+    {
+	m_rescan.AddRescan(callback, startTime, start_height, stop_height);
     }
     void waitForNotificationsIfTipChanged(const uint256& old_tip) override
     {
