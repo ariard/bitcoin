@@ -143,17 +143,6 @@ UniValue importprivkey(const JSONRPCRequest& request)
         if (!request.params[2].isNull())
             fRescan = request.params[2].get_bool();
 
-        if (fRescan && pwallet->chain().havePruned()) {
-            // Exit early and print an error.
-            // If a block is pruned after this check, we will import the key(s),
-            // but fail the rescan with a generic error.
-            throw JSONRPCError(RPC_WALLET_ERROR, "Rescan is disabled when blocks are pruned");
-        }
-
-        if (fRescan && !reserver.reserve()) {
-            throw JSONRPCError(RPC_WALLET_ERROR, "Wallet is currently rescanning. Abort existing rescan or wait.");
-        }
-
         CKey key = DecodeSecret(strSecret);
         if (!key.IsValid()) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
 
@@ -184,7 +173,7 @@ UniValue importprivkey(const JSONRPCRequest& request)
         }
     }
     if (fRescan) {
-        RescanWallet(*pwallet, reserver);
+	    pwallet->chain().registerRescan(pwallet, TIMESTAMP_MIN, nullptr, nullptr);
     }
 
     return NullUniValue;
