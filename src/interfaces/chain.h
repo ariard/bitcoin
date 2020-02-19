@@ -235,6 +235,7 @@ public:
         virtual void UpdatedBlockTip() {}
         virtual void ChainStateFlushed(const CBlockLocator& locator) {}
         virtual void HandleNotifications(const CBlockLocator& locator, int height, int64_t median_time_past) {}
+	virtual void RescanBlock(const CBlock& block, int height) {}
     };
 
     //! Register handler for notifications.
