@@ -252,6 +252,9 @@ public:
     //! Request notifications.
     virtual void registerNotifications(interfaces::Chain::Notifications& callback, const CBlockLocator& locator) = 0;
 
+    //! Request rescan query
+    virtual void registerRescan(interfaces::Chain::Notifications& callback, int64_t startTime, int* startheight, int* stop_height) = 0;
+
     //! Wait for pending notifications to be processed unless block hash points to the current
     //! chain tip.
     virtual void waitForNotificationsIfTipChanged(const uint256& old_tip) = 0;
