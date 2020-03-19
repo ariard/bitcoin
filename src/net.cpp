@@ -48,9 +48,6 @@ static_assert(MINIUPNPC_API_VERSION >= 10, "miniUPnPc API version >= 10 assumed"
 // Dump addresses to peers.dat every 15 minutes (900s)
 static constexpr int DUMP_PEERS_INTERVAL = 15 * 60;
 
-// Attempt initial broadcast of locally submitted txns every 10 minutes.
-static constexpr std::chrono::milliseconds REATTEMPT_BROADCAST_INTERVAL = std::chrono::milliseconds(10 * 60 * 1000);
-
 /** Number of DNS seeds to query when the number of connections is low. */
 static constexpr int DNSSEEDS_TO_QUERY_AT_ONCE = 3;
 
@@ -1634,14 +1631,6 @@ void CConnman::ThreadDNSAddressSeed()
     LogPrintf("%d addresses found from DNS seeds\n", found);
 }
 
-void CConnman::AttemptInitialBroadcast()
-{
-    ForEachNode([this](CNode* pnode)
-    {
-        this->m_msgproc->QueueUnbroadcastTxs(pnode);
-    });
-}
-
 void CConnman::DumpAddresses()
 {
     int64_t nStart = GetTimeMillis();
@@ -2331,9 +2320,6 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
 
     // Dump network addresses
     scheduler.scheduleEvery(std::bind(&CConnman::DumpAddresses, this), DUMP_PEERS_INTERVAL * 1000);
-
-    // Attempt to broadcast transactions that have not yet been acknowledged by the network
-    scheduler.scheduleEvery(std::bind(&CConnman::AttemptInitialBroadcast, this), REATTEMPT_BROADCAST_INTERVAL.count() );
 
     return true;
 }

@@ -780,11 +780,10 @@ void PeerLogicValidation::InitializeNode(CNode *pnode) {
         PushNodeVersion(pnode, connman, GetTime());
 }
 
-void PeerLogicValidation::QueueUnbroadcastTxs(CNode* pnode)
+void PeerLogicValidation::ReattemptInitialBroadcast()
 {
     for(const uint256& txid : mempool.m_unbroadcast_txids){
-        CInv inv(MSG_TX, txid);
-        pnode->PushInventory(inv);
+        RelayTransaction(txid, *connman);
     }
 }
 
@@ -1134,6 +1133,8 @@ PeerLogicValidation::PeerLogicValidation(CConnman* connmanIn, BanMan* banman, CS
     // timer.
     static_assert(EXTRA_PEER_CHECK_INTERVAL < STALE_CHECK_INTERVAL, "peer eviction timer should be less than stale tip check timer");
     scheduler.scheduleEvery(std::bind(&PeerLogicValidation::CheckForStaleTipAndEvictPeers, this, consensusParams), EXTRA_PEER_CHECK_INTERVAL * 1000);
+
+    scheduler.scheduleEvery(std::bind(&PeerLogicValidation::ReattemptInitialBroadcast, this), REATTEMPT_BROADCAST_INTERVAL.count());
 }
 
 /**

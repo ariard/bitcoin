@@ -19,6 +19,9 @@ static const unsigned int DEFAULT_MAX_ORPHAN_TRANSACTIONS = 100;
 static const unsigned int DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN = 100;
 static const bool DEFAULT_PEERBLOOMFILTERS = false;
 
+// Attempt initial broadcast of locally submitted txns every 10 minutes.
+static constexpr std::chrono::milliseconds REATTEMPT_BROADCAST_INTERVAL = std::chrono::milliseconds(10 * 60 * 1000);
+
 class PeerLogicValidation final : public CValidationInterface, public NetEventsInterface {
 private:
     CConnman* const connman;
@@ -73,7 +76,7 @@ public:
     /** If we have extra outbound peers, try to disconnect the one with the oldest block announcement */
     void EvictExtraOutboundPeers(int64_t time_in_seconds) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
-    void QueueUnbroadcastTxs(CNode* pnode) override;
+    void ReattemptInitialBroadcast();
 private:
     int64_t m_stale_tip_check_time; //!< Next time to check for stale tip
 };
