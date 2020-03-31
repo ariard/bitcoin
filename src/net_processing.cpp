@@ -82,6 +82,12 @@ static_assert(INBOUND_PEER_TX_DELAY >= MAX_GETDATA_RANDOM_DELAY,
 static const unsigned int MAX_GETDATA_SZ = 1000;
 
 
+/** Delay block announcement, in seconds */
+static constexpr int64_t DELAY_BLOCK = 60;
+
+RecursiveMutex g_cs_delayed_blocks;
+std::vector<uint256> delayed_blocks GUARDED_BY(g_cs_delayed_blocks);
+
 struct COrphanTx {
     // When modifying, adapt the copy of this definition in tests/DoS_tests.
     CTransactionRef tx;
@@ -586,7 +592,7 @@ static bool TipMayBeStale(const Consensus::Params &consensusParams) EXCLUSIVE_LO
 
 static bool CanDirectFetch(const Consensus::Params &consensusParams) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
-    return ::ChainActive().Tip()->GetBlockTime() > GetAdjustedTime() - consensusParams.nPowTargetSpacing * 20;
+    return true;
 }
 
 static bool PeerHasHeader(CNodeState *state, const CBlockIndex *pindex) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
@@ -1128,6 +1134,7 @@ PeerLogicValidation::PeerLogicValidation(CConnman* connmanIn, BanMan* banman, CS
     // timer.
     static_assert(EXTRA_PEER_CHECK_INTERVAL < STALE_CHECK_INTERVAL, "peer eviction timer should be less than stale tip check timer");
     scheduler.scheduleEvery([this, consensusParams] { this->CheckForStaleTipAndEvictPeers(consensusParams); }, std::chrono::seconds{EXTRA_PEER_CHECK_INTERVAL});
+    scheduler.scheduleEvery([this] {this->DelayBlockAnnouncement(); }, std::chrono::seconds{DELAY_BLOCK});
 }
 
 /**
@@ -1265,17 +1272,15 @@ void PeerLogicValidation::UpdatedBlockTip(const CBlockIndex *pindexNew, const CB
                 break;
             }
         }
-        // Relay inventory, but don't relay old inventory during initial block download.
-        connman->ForEachNode([nNewHeight, &vHashes](CNode* pnode) {
-            if (nNewHeight > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : 0)) {
-                for (const uint256& hash : reverse_iterate(vHashes)) {
-                    pnode->PushBlockHash(hash);
-                }
-            }
-        });
-        connman->WakeMessageHandler();
+        //TODO push block in buffer
+        LOCK(g_cs_delayed_blocks);
+        for (const uint256& hash : reverse_iterate(vHashes)) {
+		LogPrint(BCLog::NET, "delaying block %s announcement ", hash.ToString());
+                delayed_blocks.emplace_back(hash);
+        }
     }
 }
+
 
 /**
  * Handle invalid block rejection and consequent peer banning, maintain which
@@ -1679,6 +1684,7 @@ bool static ProcessHeadersMessage(CNode* pfrom, CConnman* connman, CTxMemPool& m
         return true;
     }
 
+    LogPrint(BCLog::NET, "Process headers message");
     bool received_new_header = false;
     const CBlockIndex *pindexLast = nullptr;
     {
@@ -1766,6 +1772,7 @@ bool static ProcessHeadersMessage(CNode* pfrom, CConnman* connman, CTxMemPool& m
         bool fCanDirectFetch = CanDirectFetch(chainparams.GetConsensus());
         // If this set of headers is valid and ends in a block with at least as
         // much work as our tip, download as much as possible.
+        LogPrint(BCLog::NET, "Can direct fetch %s and last tip work equal or inferior work to last block received %s", fCanDirectFetch ? "true" : "false", ::ChainActive().Tip()->nChainWork <= pindexLast->nChainWork ? "true" : "false");
         if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && ::ChainActive().Tip()->nChainWork <= pindexLast->nChainWork) {
             std::vector<const CBlockIndex*> vToFetch;
             const CBlockIndex *pindexWalk = pindexLast;
@@ -2970,6 +2977,7 @@ bool ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStream& vR
             ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
         }
 
+	LogPrint(BCLog::NET, "Process headers from %d", pfrom->GetId());
         return ProcessHeadersMessage(pfrom, connman, mempool, headers, chainparams, /*via_compact_block=*/false);
     }
 
@@ -3510,6 +3518,23 @@ void PeerLogicValidation::CheckForStaleTipAndEvictPeers(const Consensus::Params 
         }
         m_stale_tip_check_time = time_in_seconds + STALE_CHECK_INTERVAL;
     }
+}
+
+void PeerLogicValidation::DelayBlockAnnouncement()
+{
+	LOCK(g_cs_delayed_blocks);
+	{
+	    std::vector<uint256> blocks_to_announce;
+	    delayed_blocks.swap(blocks_to_announce);
+            // Relay inventory, but don't relay old inventory during initial block download.
+            connman->ForEachNode([&blocks_to_announce](CNode* pnode) {
+                for (auto it = blocks_to_announce.cbegin(); it != blocks_to_announce.cend(); ++it) {
+		    LogPrint(BCLog::NET, "Inv'ing block %s", (*it).ToString());
+                    pnode->PushBlockHash(*it);
+                }
+            });
+	}
+        connman->WakeMessageHandler();
 }
 
 namespace {
