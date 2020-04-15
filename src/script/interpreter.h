@@ -118,6 +118,12 @@ enum
 
 bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
 
+/** "Midstate" hashes cache.
+ *
+ * As some limbs of signature message are invariant to sigops
+ * evaluation, cache them to avoid performance hit and DoS vector
+ * See BIP143, CVE-2013-2292 for more information
+ */
 struct PrecomputedTransactionData
 {
     uint256 hashPrevouts, hashSequence, hashOutputs;
