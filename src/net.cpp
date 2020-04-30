@@ -1642,7 +1642,7 @@ void CConnman::ThreadDNSAddressSeed()
                     {
                         LOCK(cs_vNodes);
                         for (const CNode* pnode : vNodes) {
-                            nRelevant += pnode->fSuccessfullyConnected && !pnode->fFeeler && !pnode->fAddrFetch && !pnode->m_manual_connection && !pnode->fInbound;
+                            nRelevant += pnode->fSuccessfullyConnected && (pnode->m_conn_type == ConnectionType::OUTBOUND || pnode->m_conn_type == ConnectionType::BLOCK_RELAY);
                         }
                     }
                     if (nRelevant >= 2) {
@@ -1752,7 +1752,7 @@ int CConnman::GetExtraOutboundCount()
     {
         LOCK(cs_vNodes);
         for (const CNode* pnode : vNodes) {
-            if (!pnode->fInbound && !pnode->m_manual_connection && !pnode->fFeeler && !pnode->fDisconnect && !pnode->fAddrFetch && pnode->fSuccessfullyConnected) {
+            if (pnode->fSuccessfullyConnected && !pnode->fDisconnect && (pnode->m_conn_type == ConnectionType::OUTBOUND || pnode->m_conn_type == ConnectionType::BLOCK_RELAY)) {
                 ++nOutbound;
             }
         }
@@ -2736,6 +2736,7 @@ CNode::CNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn
     : nTimeConnected(GetSystemTimeInSeconds()),
     addr(addrIn),
     addrBind(addrBindIn),
+    m_conn_type(conn_type_in),
     fFeeler(conn_type_in == ConnectionType::FEELER),
     fAddrFetch(conn_type_in == ConnectionType::ADDR_FETCH),
     m_manual_connection(conn_type_in == ConnectionType::MANUAL),
