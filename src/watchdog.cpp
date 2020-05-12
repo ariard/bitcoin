@@ -5,6 +5,7 @@
 #include <watchdog.h>
 
 #include <util/time.h>
+#include <watchdoginterface.h>
 
 CWatchdog::CWatchdog()
 {
@@ -18,6 +19,7 @@ void CWatchdog::ScanAnomalies()
     // if nLastBlockTime+2 !=
     // blockk interval + variance
     // TODO: generate zmq event
+    GetWatchSignals().BlockHeaderAnomalie();
 }
 
 void CWatchdog::LogHeader(const std::vector<CBlockHeader>& block)
