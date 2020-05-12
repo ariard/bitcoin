@@ -2377,8 +2377,7 @@ void ProcessMessage(
         }
 
         // Feeler connections exist only to verify if address is online.
-        if (pfrom.fFeeler) {
-            assert(pfrom.fInbound == false);
+        if (pfrom.m_conn_type == ConnectionType::FEELER) {
             pfrom.fDisconnect = true;
         }
         return;
