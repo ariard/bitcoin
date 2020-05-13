@@ -44,7 +44,9 @@ bool AltLogicValidation::ProcessMessage(CAltMsg& msg) {
             if (pindex->GetBlockHash() == hashStop)
                 break;
         }
-        //TODO: PushMessage
+        const CNetMsgMaker msgMaker(209);
+        m_altstack->PushMessage(msg.m_node_id, msgMaker.Make(NetMsgType::HEADERS, vHeaders));
+        return true;
     }
     return true;
 }
