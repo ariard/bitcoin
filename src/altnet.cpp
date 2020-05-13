@@ -47,11 +47,12 @@ void CAltstack::Interrupt() {
 void CAltstack::ThreadWarmupDrivers()
 {
     uint32_t id = 0;
-    LOCK(cs_vDrivers);
+    LOCK2(cs_vDrivers, cs_vNodesDriver);
     for (auto&& pdriver: vDrivers) {
         //TODO: CDriver::LoadAtInit() ?
         pdriver->SetId(id);
         pdriver->Warmup();
+        mapNodesDriver.emplace(id, pdriver);
         id++;
     }
 }
@@ -99,4 +100,11 @@ void CAltstack::ThreadAltProcessing()
         }
         m_msgproc->SendMessage();
     }
+}
+
+CDriver *CAltstack::Driver(uint32_t node_id) {
+    std::map<uint32_t, CDriver*>::iterator it = mapNodesDriver.find(node_id);
+    if (it == mapNodesDriver.end())
+        return nullptr;
+    return it->second;
 }
