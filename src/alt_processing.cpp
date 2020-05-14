@@ -50,6 +50,9 @@ bool AltLogicValidation::ProcessMessage(CAltMsg& msg) {
         m_altstack->PushMessage(msg.m_node_id, msgMaker.Make(NetMsgType::HEADERS, vHeaders));
         return true;
     }
+    if (msg.m_command == NetMsgType::HEADERS) {
+        //TODO print header
+    }
     return true;
 }
 
