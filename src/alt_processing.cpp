@@ -21,6 +21,8 @@ CAltNodeState *AltLogicValidation::State(uint32_t node_id) {
 bool AltLogicValidation::ProcessMessage(CAltMsg& msg) {
     if (msg.m_command == NetMsgType::GETHEADERS) {
 
+        LogPrint(BCLog::ALTSTACK, "Receive GETHEADERS from %d\n", msg.m_node_id);
+
         LOCK(cs_vNodeState);
         CAltNodeState *node = State(msg.m_node_id);
         // Peer ask for a reply, check receiving capability
@@ -67,6 +69,8 @@ void AltLogicValidation::BlockHeaderAnomalie() {
     LOCK(cs_main);
     CBlockIndex *pindexBestHeader = ::ChainActive().Tip();
     const CNetMsgMaker msgMaker(209);
+
+    LogPrint(BCLog::NET, "Block header anomalie detected - Anycasting header fetching\n");
 
     // "Anycast" headers fetching
     std::map<uint32_t, CAltNodeState>::iterator iter = mapNodeState.begin();
