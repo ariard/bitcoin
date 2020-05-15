@@ -11,7 +11,7 @@
 
 /* How often to scan for anomalies */
 //TODO: make if configurable
-static constexpr std::chrono::minutes SCAN_ANOMALIES_INTERVAL{60};
+static constexpr std::chrono::minutes SCAN_ANOMALIES_INTERVAL{1};
 
 class CWatchdog
 {

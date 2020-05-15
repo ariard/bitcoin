@@ -16,9 +16,6 @@ CWatchdog::~CWatchdog() {}
 
 void CWatchdog::ScanAnomalies()
 {
-    // if nLastBlockTime+2 !=
-    // blockk interval + variance
-    // TODO: generate zmq event
     GetWatchSignals().BlockHeaderAnomalie();
 }
 
