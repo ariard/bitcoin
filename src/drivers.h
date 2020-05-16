@@ -7,6 +7,8 @@
 
 #include <altnet.h>
 
+#include <net.h>
+
 #include <string>
 #include <vector>
 
@@ -60,7 +62,7 @@ public:
     virtual bool Listen(uint32_t potential_node_id) = 0;
 
     /* Send a message to given node_id, driver MUST not flush yet */
-    virtual bool Send(uint32_t node_id, std::vector<unsigned char> data) = 0;
+    virtual bool Send(CSerializedNetMsg msg) = 0;
 
     /* Return driver capabilities */
     virtual TransportCapabilities GetCapabilities() = 0;

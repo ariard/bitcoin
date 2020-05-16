@@ -59,8 +59,12 @@ void CAltstack::ThreadWarmupDrivers()
     for (auto&& pdriver: vDrivers) {
         //TODO: CDriver::LoadAtInit() ?
         pdriver->SetId(id);
-        pdriver->Warmup();
+        LogPrint(BCLog::ALTSTACK, "Registered driver with %d\n", id);
         mapNodesDriver.emplace(id, pdriver);
+        if (pdriver->Warmup()) { // Warmup==true implies default connection
+            m_msgproc->InitializeNode(pdriver->GetId(), pdriver->GetCapabilities(), m_node_id);
+            m_node_id++;
+        }
         id++;
     }
 }
@@ -100,7 +104,8 @@ void CAltstack::ThreadAltProcessing()
 {
     while (!flagInterruptAltProc) {
         {
-            LOCK(cs_vRecvMsg);
+            LOCK(cs_main);
+            LOCK2(cs_vDrivers, cs_vRecvMsg);
             for (auto&& msg: vRecvMsg) {
                 m_msgproc->ProcessMessage(msg);
             }
@@ -117,9 +122,9 @@ CDriver *CAltstack::Driver(uint32_t node_id) {
     return it->second;
 }
 
-void CAltstack::PushMessage(uint32_t node_id, CSerializedNetMsg&& msg)
+void CAltstack::PushMessage(uint32_t driver_id, CSerializedNetMsg&& msg)
 {
     LOCK(cs_vDrivers);
-    CDriver *driver = Driver(node_id);
-    driver->Send(node_id, std::move(msg.data));
+    CDriver *driver = Driver(driver_id);
+    driver->Send(std::move(msg));
 }

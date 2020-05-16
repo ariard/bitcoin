@@ -10,7 +10,7 @@
 
 class ClightningDriver final : public CDriver {
 private:
-    int hardcoded_port = 30109;
+    int hardcoded_port = 10309;
     const char*  hardcoded_addr = "127.0.0.1";
     int driver_socket{0};
     size_t offset{0};
@@ -40,7 +40,7 @@ public:
     /*
      * Overriden from CDriver
      */
-    bool Send(uint32_t node_id, std::vector<unsigned char> data) override;
+    bool Send(CSerializedNetMsg msg) override;
 
     /*
      * Overriden from CDriver

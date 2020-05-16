@@ -7,6 +7,11 @@
 
 #include <validationinterface.h>
 
+class CWatchdogInterface;
+
+/** Register a wallet to receive updates from core */
+void RegisterWatchdogInterface(CWatchdogInterface* callback);
+
 /**
  * Implement this to subscribe to events generated in watchdog
  *
@@ -36,6 +41,8 @@ struct WatchSignalsInstance;
 class CWatchSignals {
 private:
     std::unique_ptr<WatchSignalsInstance> m_internals;
+
+    friend void ::RegisterSharedWatchdogInterface(std::shared_ptr<CWatchdogInterface>);
 
 public:
     /** Register a CScheduler to give callbacks which should run in the background (may only be called once) */

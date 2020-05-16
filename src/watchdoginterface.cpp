@@ -5,6 +5,7 @@
 #include <watchdoginterface.h>
 
 #include <scheduler.h>
+#include <logging.h>
 
 #include <future>
 #include <unordered_map>
@@ -99,6 +100,19 @@ size_t CWatchSignals::CallbacksPending() {
 CWatchSignals& GetWatchSignals()
 {
     return g_watch_signals;
+}
+
+void RegisterSharedWatchdogInterface(std::shared_ptr<CWatchdogInterface> callback) {
+    // Each connection captures pwalletIn to ensure that each callback is
+    // executed before pwalletIn is destroyed. For more details see #18338.
+    g_watch_signals.m_internals->Register(std::move(callback));
+}
+
+void RegisterWatchdogInterface(CWatchdogInterface* callbacks)
+{
+    // Create a shared_ptr with a no-op deleter - CValidationInterface lifecycle
+    // is managed by the caller.
+    RegisterSharedWatchdogInterface({callbacks, [](CWatchdogInterface*){}});
 }
 
 void CWatchSignals::BlockHeaderAnomalie() {

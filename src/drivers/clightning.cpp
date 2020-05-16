@@ -36,6 +36,8 @@ bool ClightningDriver::Warmup() {
         return false;
     }
 
+    LogPrint(BCLog::ALTSTACK, "Clightning - Bridge connection\n");
+
     offset = 0;
     return true;
 }
@@ -49,6 +51,7 @@ bool ClightningDriver::Flush() {
         nBytes = send(driver_socket, reinterpret_cast<const char*>(data.data()) + offset, data.size() - offset, MSG_NOSIGNAL | MSG_DONTWAIT);
 
         if (nBytes > 0) {
+            LogPrint(BCLog::ALTSTACK, "Cligthning - Bridge send success %d\n", nBytes);
             offset += nBytes;
             if (offset == data.size()) {
                 offset = 0;
@@ -61,6 +64,7 @@ bool ClightningDriver::Flush() {
                 LogPrint(BCLog::ALTSTACK, "Cligthning - Bridge send failure\n");
                 return false;
             }
+            break;
         }
     }
 
@@ -73,8 +77,21 @@ bool ClightningDriver::Receive(CAltMsg& msg) {
     int nBytes = 0;
     nBytes = recv(driver_socket, pchBuf, sizeof(pchBuf), MSG_DONTWAIT);
     if (nBytes > 0) {
+        LogPrint(BCLog::ALTSTACK, "Cligtning - Bridge receive success\n");
         msg.m_recv.resize(256 * 1024);
-        memcpy(&msg.m_recv[0], pchBuf, 256 * 1024);
+
+        // Parse message command from its LN message type
+        if (pchBuf[1] == 0x35) {
+            msg.m_command = NetMsgType::GETHEADERS;
+        } else if (pchBuf[1] == 0x37) {
+            msg.m_command = NetMsgType::HEADERS;
+        } else {
+            LogPrint(BCLog::ALTSTACK, "Cligtning - Bridge receive unknown cmd %x%x\n", pchBuf[0], pchBuf[1]);
+        }
+
+        // Associate unique node_id
+        msg.m_node_id = 0; // hack
+        memcpy(&msg.m_recv[0], pchBuf+2, nBytes-2);
     } else {
         //LogPrint(BCLog::ALTSTACK, "Cligtning - Bridge receive failure\n");
         return false;
@@ -83,11 +100,26 @@ bool ClightningDriver::Receive(CAltMsg& msg) {
 }
 
 bool ClightningDriver::Listen(uint32_t potential_node_id) {
-    return true;
+    return false;
 }
 
-bool ClightningDriver::Send(uint32_t node_id, std::vector<unsigned char> data) {
-    vSendMsg.push_back(std::move(data));
+bool ClightningDriver::Send(CSerializedNetMsg msg) {
+
+    // Pre-process message with its LN message type
+    std::vector<unsigned char>::iterator it;
+    if (msg.command == NetMsgType::GETHEADERS) {
+        LogPrint(BCLog::ALTSTACK, "Clightning - Preprocessing getheader\n");
+        it = msg.data.begin();
+        msg.data.insert(it, 0x35);
+        msg.data.insert(it, 0x82);
+    }
+    if (msg.command == NetMsgType::HEADERS) {
+        LogPrint(BCLog::ALTSTACK, "Clightning - Preprocessing header\n");
+        it = msg.data.begin();
+        msg.data.insert(it, 0x37);
+        msg.data.insert(it, 0x82);
+    }
+    vSendMsg.push_back(std::move(msg.data));
     return true;
 }
 

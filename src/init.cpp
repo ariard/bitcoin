@@ -1392,6 +1392,7 @@ bool AppInitMain(NodeContext& node)
     RegisterValidationInterface(node.peer_logic.get());
 
     node.alt_logic.reset(new AltLogicValidation(node.altstack.get()));
+    RegisterWatchdogInterface(node.alt_logic.get());
 
     // sanitize comments per BIP-0014, format user agent and check total size
     std::vector<std::string> uacomments;
@@ -1965,9 +1966,11 @@ bool AppInitMain(NodeContext& node)
         banman->DumpBanlist();
     }, DUMP_BANS_INTERVAL);
 
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     CWatchdog* watchdog = node.watchdog.get();
-    node.scheduler->scheduleEvery([watchdog]{
-            watchdog->ScanAnomalies();
-    }, SCAN_ANOMALIES_INTERVAL);
+    watchdog->ScanAnomalies();
+    //node.scheduler->scheduleEvery([watchdog]{
+    //        watchdog->ScanAnomalies();
+    //}, SCAN_ANOMALIES_INTERVAL);
     return true;
 }
