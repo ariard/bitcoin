@@ -775,7 +775,6 @@ public:
     ConnectionType m_conn_type{ConnectionType::OUTBOUND};
     bool fFeeler{false}; // If true this node is being used as a short lived feeler.
     bool fAddrFetch{false};
-    bool m_manual_connection{false};
     bool fClient{false}; // set by version message
     bool m_limited_node{false}; //after BIP159, set by version message
     const bool fInbound;
