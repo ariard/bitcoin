@@ -114,12 +114,12 @@ struct CSerializedNetMsg
 };
 
 enum class ConnectionType {
-    INBOUND,
-    OUTBOUND,
-    MANUAL,
-    FEELER,
-    BLOCK_RELAY,
-    ADDR_FETCH,
+    INBOUND, // peer initiated connections
+    OUTBOUND, // full relay connections (blocks, addrs, txns)
+    MANUAL, // connections to addresses added via addnode or the connect command line argument
+    FEELER, // short lived connections used to test address validity
+    BLOCK_RELAY, // only relay blocks to these connections
+    ADDR_FETCH, // short lived connections used to solicit addrs
 };
 
 class NetEventsInterface;
