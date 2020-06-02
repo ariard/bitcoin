@@ -1835,7 +1835,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect)
                     setConnected.insert(pnode->addr.GetGroup(addrman.m_asmap));
                     if (pnode->m_tx_relay == nullptr) {
                         nOutboundBlockRelay++;
-                    } else if (pnode->m_conn_type != ConnectionType::FEELER) {
+                    } else if (pnode->m_conn_type == ConnectionType::OUTBOUND) {
                         nOutboundFullRelay++;
                     }
                 }
