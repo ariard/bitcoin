@@ -797,11 +797,9 @@ void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds)
     if (state) state->m_last_block_announcement = time_in_seconds;
 }
 
-// Returns true for outbound peers, excluding manual connections, feelers, and
-// one-shots.
 static bool IsOutboundDisconnectionCandidate(const CNode& node)
 {
-    return !(node.fInbound || node.m_manual_connection || node.fFeeler || node.fAddrFetch);
+    return (node.m_conn_type == ConnectionType::OUTBOUND || node.m_conn_type == ConnectionType::BLOCK_RELAY);
 }
 
 void PeerLogicValidation::InitializeNode(CNode *pnode) {
@@ -810,7 +808,7 @@ void PeerLogicValidation::InitializeNode(CNode *pnode) {
     NodeId nodeid = pnode->GetId();
     {
         LOCK(cs_main);
-        mapNodeState.emplace_hint(mapNodeState.end(), std::piecewise_construct, std::forward_as_tuple(nodeid), std::forward_as_tuple(addr, std::move(addrName), pnode->fInbound, pnode->m_manual_connection));
+        mapNodeState.emplace_hint(mapNodeState.end(), std::piecewise_construct, std::forward_as_tuple(nodeid), std::forward_as_tuple(addr, std::move(addrName), pnode->fInbound, pnode->m_conn_type == ConnectionType::MANUAL));
     }
     if(!pnode->fInbound)
         PushNodeVersion(*pnode, connman, GetTime());
@@ -2252,7 +2250,7 @@ void ProcessMessage(
         {
             connman->SetServices(pfrom.addr, nServices);
         }
-        if (!pfrom.fInbound && !pfrom.fFeeler && !pfrom.m_manual_connection && !HasAllDesirableServiceFlags(nServices))
+        if ((pfrom.m_conn_type == ConnectionType::OUTBOUND || pfrom.m_conn_type == ConnectionType::BLOCK_RELAY || pfrom.m_conn_type == ConnectionType::ADDR_FETCH) && !HasAllDesirableServiceFlags(nServices))
         {
             LogPrint(BCLog::NET, "peer=%d does not offer the expected services (%08x offered, %08x expected); disconnecting\n", pfrom.GetId(), nServices, GetDesirableServiceFlags(nServices));
             pfrom.fDisconnect = true;
@@ -3573,7 +3571,7 @@ bool PeerLogicValidation::CheckIfBanned(CNode& pnode)
         state.fShouldBan = false;
         if (pnode.HasPermission(PF_NOBAN))
             LogPrintf("Warning: not punishing whitelisted peer %s!\n", pnode.addr.ToString());
-        else if (pnode.m_manual_connection)
+        else if (pnode.m_conn_type == ConnectionType::MANUAL)
             LogPrintf("Warning: not punishing manually-connected peer %s!\n", pnode.addr.ToString());
         else if (pnode.addr.IsLocal()) {
             // Disconnect but don't ban _this_ local node
