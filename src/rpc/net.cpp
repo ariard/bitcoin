@@ -261,7 +261,8 @@ static UniValue addnode(const JSONRPCRequest& request)
     if (strCommand == "onetry")
     {
         CAddress addr;
-        node.connman->OpenNetworkConnection(addr, false, nullptr, strNode.c_str(), ConnectionType::MANUAL);
+        ConnectionAttributes conn_attrs(ConnectionInitiator::OUTBOUND, ConnectionEstablishment::MANUAL, ConnectionContent::FULL_RELAY, ConnectionBehavior::REGULAR);
+        node.connman->OpenNetworkConnection(addr, false, nullptr, strNode.c_str(), conn_attrs);
         return NullUniValue;
     }
 

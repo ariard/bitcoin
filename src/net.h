@@ -245,7 +245,7 @@ public:
     bool GetNetworkActive() const { return fNetworkActive; };
     bool GetUseAddrmanOutgoing() const { return m_use_addrman_outgoing; };
     void SetNetworkActive(bool active);
-    void OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, ConnectionType conn_type = ConnectionType::OUTBOUND);
+    void OpenNetworkConnection(const CAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, ConnectionAttributes conn_attrs = ConnectionAttributes());
     bool CheckIncomingNonce(uint64_t nonce);
 
     bool ForNode(NodeId id, std::function<bool(CNode* pnode)> func);
@@ -411,7 +411,7 @@ private:
     CNode* FindNode(const CService& addr);
 
     bool AttemptToEvictConnection();
-    CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, ConnectionType conn_type);
+    CNode* ConnectNode(CAddress addrConnect, const char *pszDest, bool fCountFailure, ConnectionAttributes conn_attrs);
     void AddWhitelistPermissionFlags(NetPermissionFlags& flags, const CNetAddr &addr) const;
 
     void DeleteNode(CNode* pnode);
@@ -812,11 +812,10 @@ public:
     }
     // This boolean is unusued in actual processing, only present for backward compatibility at RPC/QT level
     bool m_legacyWhitelisted{false};
-    ConnectionType m_conn_type{ConnectionType::OUTBOUND};
+    ConnectionAttributes m_conn_attrs;
     bool fAddrFetch{false};
     bool fClient{false}; // set by version message
     bool m_limited_node{false}; //after BIP159, set by version message
-    const bool fInbound;
     std::atomic_bool fSuccessfullyConnected{false};
     // Setting fDisconnect to true will cause the node to be disconnected the
     // next time DisconnectNodes() runs
@@ -903,7 +902,7 @@ public:
 
     std::set<uint256> orphan_work_set;
 
-    CNode(NodeId id, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn, SOCKET hSocketIn, const CAddress &addrIn, uint64_t nKeyedNetGroupIn, uint64_t nLocalHostNonceIn, const CAddress &addrBindIn, const std::string &addrNameIn = "", ConnectionType conn_type_in = ConnectionType::OUTBOUND);
+    CNode(NodeId id, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn, SOCKET hSocketIn, const CAddress &addrIn, uint64_t nKeyedNetGroupIn, uint64_t nLocalHostNonceIn, const CAddress &addrBindIn, const std::string &addrNameIn = "", ConnectionAttributes conn_attrs = ConnectionAttributes());
     ~CNode();
     CNode(const CNode&) = delete;
     CNode& operator=(const CNode&) = delete;
