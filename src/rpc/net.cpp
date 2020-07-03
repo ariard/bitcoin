@@ -297,14 +297,11 @@ static UniValue addconnection(const JSONRPCRequest& request)
         RPCExamples{
             HelpExampleCli("addconnection", "\"192.168.0.6:8333\" \"outbound\"")
             + HelpExampleRpc("addconnection", "\"192.168.0.6:8333\" \"outbound\"")
+            + HelpExampleRpc("addconnection", "\"192.168.0.6:8333\" \"blockrelay\"")
         },
     };
 
     help.Check(request);
-
-    if (!Params().IsMockableChain()) {
-        throw std::runtime_error("addconnection is for regression testing (-regtest mode) only");
-    }
 
     RPCTypeCheck(request.params, { UniValue::VSTR, UniValue::VSTR });
     const std::string address = request.params[0].get_str();
