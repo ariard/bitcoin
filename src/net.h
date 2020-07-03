@@ -122,6 +122,46 @@ enum class ConnectionType {
     ADDR_FETCH, /**< short lived connections used to solicit addrs */
 };
 
+enum class ConnectionInitiator {
+    OUTBOUND,
+    INBOUND,
+};
+
+enum class ConnectionEstablishment {
+    AUTO,
+    MANUAL,
+};
+
+enum class ConnectionContent {
+    FULL_RELAY,
+    ADDR_RELAY_ONLY,
+    BLOCK_RELAY_ONLY,
+};
+
+enum class ConnectionBehavior {
+    REGULAR,
+    FEELER,
+    ADDR_SEEDING,
+};
+
+class ConnectionAttributes {
+private:
+    ConnectionInitiator m_init;
+    ConnectionEstablishment m_est;
+    ConnectionContent m_content;
+    ConnectionBehavior m_behavior;
+public:
+    ConnectionAttributes(ConnectionInitiator init = ConnectionInitiator::OUTBOUND, ConnectionEstablishment est = ConnectionEstablishment::AUTO, ConnectionContent content = ConnectionContent::FULL_RELAY, ConnectionBehavior behavior = ConnectionBehavior::REGULAR) : m_init(init), m_est(est), m_content(content), m_behavior(behavior) {}
+    bool IsOutbound() const { return m_init == ConnectionInitiator::OUTBOUND; }
+    bool IsInbound() const { return m_init == ConnectionInitiator::INBOUND; }
+    bool IsAuto() const { return m_est == ConnectionEstablishment::AUTO; }
+    bool IsManual() const { return m_est == ConnectionEstablishment::MANUAL; }
+    bool IsFullRelay() const { return m_content == ConnectionContent::FULL_RELAY; }
+    bool IsBlockRelayOnly() const { return m_content == ConnectionContent::BLOCK_RELAY_ONLY; }
+    bool IsFeeler() const { return m_behavior == ConnectionBehavior::FEELER; }
+    bool IsAddrSeeding() const { return m_behavior == ConnectionBehavior::ADDR_SEEDING; }
+};
+
 class NetEventsInterface;
 class CConnman
 {

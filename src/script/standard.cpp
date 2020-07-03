@@ -291,7 +291,7 @@ public:
     }
 };
 
-const CScriptVisitor g_script_visitor;
+const CScriptVisitor g_script_visitor {};
 
 } // namespace
 
