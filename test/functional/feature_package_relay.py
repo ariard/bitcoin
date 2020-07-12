@@ -4,6 +4,8 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test processing of two-transaction packages"""
 
+import time
+
 from io import BytesIO
 from decimal import Decimal
 from test_framework.messages import FromHex, CTransaction, msg_tx
@@ -94,7 +96,7 @@ class PackageRelay(BitcoinTestFramework):
         # Child spend parent with a 500 sat-fee
         outputs_child[self.nodes[1].getnewaddress()] = Decimal("0.99999500")
         child_tx = self.nodes[1].signrawtransactionwithwallet(self.nodes[1].createrawtransaction(inputs_child, outputs_child))['hex']
-        package_txn = [parent_tx.serialize().hex(), child_tx]
+        package_txn = [raw_parent_tx, child_tx]
 
         self.nodes[1].sendpackage(rawtxs=package_txn)
 

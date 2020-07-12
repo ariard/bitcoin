@@ -879,12 +879,12 @@ static UniValue sendpackage(const JSONRPCRequest& request)
 
     // parse hex string from parameter
     CMutableTransaction parent_mtx;
-    if (!DecodeHexTx(parent_mtx, request.params[0].get_str()))
+    if (!DecodeHexTx(parent_mtx, request.params[0].get_array()[0].get_str()))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "PARENT TX decode failed");
     CTransactionRef parent_tx(MakeTransactionRef(std::move(parent_mtx)));
 
     CMutableTransaction child_mtx;
-    if (!DecodeHexTx(child_mtx, request.params[1].get_str()))
+    if (!DecodeHexTx(child_mtx, request.params[0].get_array()[1].get_str()))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "CHILD TX decode failed");
     CTransactionRef child_tx(MakeTransactionRef(std::move(child_mtx)));
 
@@ -895,6 +895,7 @@ static UniValue sendpackage(const JSONRPCRequest& request)
     std::string err_string;
     AssertLockNotHeld(cs_main);
     NodeContext& node = EnsureNodeContext(request.context);
+    LogPrint(BCLog::PR, "sendpackage : send package\n");
     const TransactionError err = BroadcastPackage(node, package_txn, err_string, /*relay*/ true, /*wait_callback*/ true);
     if (TransactionError::OK != err) {
         throw JSONRPCTransactionError(err, err_string);

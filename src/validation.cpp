@@ -1107,6 +1107,9 @@ bool MemPoolAccept::AcceptMultipleTransactions(const std::list<CTransactionRef>&
         // transactions in this package will have their inputs available.
         m_viewmempool.AddPotentialTransaction(ptx);
     }
+    LogPrint(BCLog::PR, "package passed PreChecks\n");
+
+    //TODO: rough conflict feerate, ensure feerate is higher, don't bother about conflict for now
 
     // Check overall package feerate
     size_t total_size=0;
@@ -1120,6 +1123,7 @@ bool MemPoolAccept::AcceptMultipleTransactions(const std::list<CTransactionRef>&
         total_fee += ws.m_modified_fees;
         total_conflicting_fee += ws.m_conflicting_fees;
     }
+    LogPrint(BCLog::PR, "package assembled for CheckFeeRate\n");
     if (!CheckFeeRate(total_size, total_fee, args.m_state)) return false;
 
     // For now, don't evict conflicting duplicates, as a transaction might be
@@ -1176,6 +1180,7 @@ bool MemPoolAccept::AcceptMultipleTransactions(const std::list<CTransactionRef>&
         return args.m_state.Invalid(TxValidationResult::TX_MEMPOOL_POLICY, "too-long-package-mempool-chain", strprintf("exceeds ancestor size limit for tx %s [limit: %u]", tx_list.back()->GetHash().ToString(), m_limit_ancestor_size));
     }
 
+
     // Do the script checks after all policy checks are done
     std::vector<PrecomputedTransactionData> txdata;
     txdata.reserve(tx_list.size());
@@ -1183,6 +1188,7 @@ bool MemPoolAccept::AcceptMultipleTransactions(const std::list<CTransactionRef>&
         txdata.emplace_back(*wit->m_ptx);
         if (!PolicyScriptChecks(args, *wit, txdata.back())) return false;
     }
+
 
     // This package should be accepted except possibly for failing in
     // TrimToSize(), which we can't exercise without actually adding to the

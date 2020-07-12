@@ -155,6 +155,7 @@ TransactionError BroadcastPackage(NodeContext& node, std::list<CTransactionRef>&
     }
 
     if (relay) {
+        LogPrint(BCLog::PR, "BroadcastPackage : relay transaction\n");
         RelayPackage(0, package);
     }
 

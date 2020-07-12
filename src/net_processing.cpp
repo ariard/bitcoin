@@ -823,6 +823,7 @@ void RequestTx(CNodeState* state, const uint256& txid, std::chrono::microseconds
     // fPreferredDownload as a proxy for outbound peers.
     const auto process_time = CalculateTxGetDataTime(txid, current_time, !state->fPreferredDownload, !state->m_wtxid_relay && g_wtxid_relay_peers > 0);
 
+    LogPrint(BCLog::PR, "emplacing %s download\n", txid.ToString());
     peer_download_state.m_tx_process_time.emplace(process_time, txid);
 }
 
@@ -1497,6 +1498,7 @@ void RelayPackage(uint64_t downstream_peer, const std::list<CTransactionRef>& pa
     std::vector<uint256> package_wtxids;
     for (const CTransactionRef& ptx: package) {
         hasher.Write(ptx->GetHash().begin(), ptx->GetHash().size());
+        LogPrint(BCLog::PR, "constituting package with %s\n", ptx->GetHash().ToString());
         package_wtxids.push_back(ptx->GetHash());
     }
     hasher.Finalize(package_id.begin());
@@ -1504,6 +1506,7 @@ void RelayPackage(uint64_t downstream_peer, const std::list<CTransactionRef>& pa
     {
         //XXX: own lock
         LOCK(cs_main);
+        LogPrint(BCLog::PR, "RelayPackage: %s\n", package_id.ToString());
         g_packagecache.ReceivedPackage(downstream_peer, package_id, package_wtxids, current_time);
     }
 }
@@ -1746,6 +1749,7 @@ static void FindPackageForGetData(CNode& peer, const uint256 package_id, std::ve
             package_txn.emplace_back(txinfo.tx);
         }
     }
+    LogPrint(BCLog::PR, "find package\n");
 }
 
 void static ProcessGetData(CNode& pfrom, const CChainParams& chainparams, CConnman& connman, CTxMemPool& mempool, const std::atomic<bool>& interruptMsgProc) LOCKS_EXCLUDED(cs_main)
@@ -2360,6 +2364,7 @@ static void ProcessPackage(CNode& pfrom, CDataStream& vRecv, CConnman& connman)
     hasher.Finalize(package_id.begin());
 
     CInv inv(MSG_PACKAGE, package_id);
+    LogPrint(BCLog::PR, "processing package\n");
 
     LOCK2(cs_main, g_cs_orphans);
 
@@ -3664,6 +3669,7 @@ void ProcessMessage(
 
     if (msg_type == NetMsgType::PACKAGE) {
         ProcessPackage(pfrom, vRecv, connman);
+        return;
     }
 
     if (msg_type == NetMsgType::PING) {
@@ -4562,6 +4568,7 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                         std::vector<uint256> package_ids;
                         g_packagecache.GetAnnouncable(pto->GetId(), package_ids);
                         for (const uint256& hash : package_ids) {
+                            LogPrint(BCLog::PR, "announce package %s\n", hash.ToString());
                             vInv.push_back(CInv(MSG_PACKAGE, hash));
                             if (vInv.size() == MAX_INV_SZ) {
                                 connman->PushMessage(pto, msgMaker.Make(NetMsgType::INV, vInv));
