@@ -303,6 +303,8 @@ class SegWitTest(BitcoinTestFramework):
         self.test_witness_sigops()
         self.test_superfluous_witness()
         self.test_wtxid_relay()
+        self.test_non_standard_witness_inputs()
+
 
     # Individual tests
 
@@ -704,6 +706,55 @@ class SegWitTest(BitcoinTestFramework):
         self.utxo.pop(0)
         self.utxo.append(UTXO(tx3.sha256, 0, tx3.vout[0].nValue))
         assert_equal(len(self.nodes[1].getrawmempool()), 0)
+
+    @subtest  # type: ignore
+    def test_non_standard_witness_inputs(self):
+        """Test detection of non-standard V1+ inputs
+
+        V1+ segwit outputs are standard whereas V1+ segwit inputs are not."""
+
+        witness_program = CScript([OP_TRUE])
+        witness_hash = sha256(witness_program)
+        script_pubkey = CScript([OP_1, witness_hash])
+
+        p2sh_pubkey = hash160(witness_program)
+        p2sh_script_pubkey = CScript([OP_HASH160, p2sh_pubkey, OP_EQUAL])
+
+        # First prepare a p2sh output (so that spending it will pass standardness)
+        p2sh_tx = CTransaction()
+        p2sh_tx.vin = [CTxIn(COutPoint(self.utxo[0].sha256, self.utxo[0].n), b"")]
+        p2sh_tx.vout = [CTxOut(self.utxo[0].nValue - 5000, p2sh_script_pubkey)]
+        p2sh_tx.rehash()
+
+        # Mine it on test_node to create the confirmed output.
+        test_transaction_acceptance(self.nodes[0], self.test_node, p2sh_tx, with_witness=True, accepted=True)
+        self.nodes[0].generate(1)
+        self.sync_blocks()
+
+        # Now test standardness of v0 P2WSH outputs.
+        # Start by creating a transaction with two outputs.
+        tx = CTransaction()
+        tx.vin = [CTxIn(COutPoint(p2sh_tx.sha256, 0), CScript([witness_program]))]
+        tx.vout = [CTxOut(p2sh_tx.vout[0].nValue - 10000, script_pubkey)]
+        tx.vout.append(CTxOut(8000, script_pubkey))  # Might burn this later
+        tx.vin[0].nSequence = BIP125_SEQUENCE_NUMBER  # Just to have the option to bump this tx from the mempool
+        tx.rehash()
+
+        # This is always accepted, since the mempool policy is to consider segwit as always active
+        # and thus allow segwit outputs
+        test_transaction_acceptance(self.nodes[1], self.std_node, tx, with_witness=True, accepted=True)
+
+        # Now create something that looks like a P2PKH output. This won't be spendable.
+        script_pubkey = CScript([OP_0, hash160(witness_hash)])
+        tx2 = CTransaction()
+        # tx was accepted, so we spend the second output.
+        tx2.vin = [CTxIn(COutPoint(tx.sha256, 1), b"")]
+        tx2.vout = [CTxOut(7000, script_pubkey)]
+        tx2.wit.vtxinwit.append(CTxInWitness())
+        tx2.wit.vtxinwit[0].scriptWitness.stack = [witness_program]
+        tx2.rehash()
+
+        test_transaction_acceptance(self.nodes[1], self.std_node, tx2, with_witness=True, accepted=False, reason='non-mandatory-script-verify-flag (Witness version reserved for soft-fork upgrades)')
 
     @subtest  # type: ignore
     def advance_to_segwit_active(self):
