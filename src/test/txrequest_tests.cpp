@@ -493,12 +493,35 @@ void BuildWtxidTest(Scenario& scenario, int config)
         scenario.Check(peerW, {wtxid}, 1, 0, 0, "w4");
     }
 
+    // Let the preferred announcement be requested. It's not going to be delivered.
+    auto expiry = RandomTime8s();
+    if (config & 2) {
+        scenario.RequestedTx(peerT, txid.GetHash(), scenario.Now() + expiry);
+        scenario.Check(peerT, {}, 0, 1, 0, "w5");
+        scenario.Check(peerW, {}, 1, 0, 0, "w6");
+    } else {
+        scenario.RequestedTx(peerW, wtxid.GetHash(), scenario.Now() + expiry);
+        scenario.Check(peerT, {}, 1, 0, 0, "w7");
+        scenario.Check(peerW, {}, 0, 1, 0, "w8");
+    }
+
+    // After reaching expiration time of the preferred announcement, verify that the
+    // remaining one is requestable
+    scenario.AdvanceTime(expiry);
+    if (config & 2) {
+        scenario.Check(peerT, {}, 0, 0, 1, "w9");
+        scenario.Check(peerW, {wtxid}, 1, 0, 0, "w10");
+    } else {
+        scenario.Check(peerT, {txid}, 1, 0, 0, "w11");
+        scenario.Check(peerW, {}, 0, 0, 1, "w12");
+    }
+
     // If a good transaction with either that hash as wtxid or txid arrives, both
     // announcements are gone.
     if (InsecureRandBool()) scenario.AdvanceTime(RandomTime8s());
     scenario.ForgetTxHash(txhash);
-    scenario.Check(peerT, {}, 0, 0, 0, "w5");
-    scenario.Check(peerW, {}, 0, 0, 0, "w6");
+    scenario.Check(peerT, {}, 0, 0, 0, "w13");
+    scenario.Check(peerW, {}, 0, 0, 0, "w14");
 }
 
 void TestInterleavedScenarios()
