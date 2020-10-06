@@ -303,6 +303,11 @@ void Shutdown(NodeContext& node)
     GetMainSignals().UnregisterBackgroundSignalScheduler();
     globalVerifyHandle.reset();
     ECC_Stop();
+    if (node.chainman) {
+        LOCK(cs_main);
+        UnloadBlockIndex(node.mempool.get(), *node.chainman);
+        node.chainman->Reset();
+    }
     node.mempool.reset();
     node.chainman.reset();
     node.scheduler.reset();
