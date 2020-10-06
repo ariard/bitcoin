@@ -144,7 +144,7 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
     m_node.mempool = MakeUnique<CTxMemPool>(&::feeEstimator);
     m_node.mempool->setSanityCheck(1.0);
 
-    m_node.chainman = &::g_chainman;
+    m_node.chainman = MakeUnique<ChainstateManager>();
     m_node.chainman->InitializeChainstate(*m_node.mempool);
     m_node.chainman->ActiveChainstate().InitCoinsDB(
         /* cache_size_bytes */ 1 << 23, /* in_memory */ true, /* should_wipe */ false);
@@ -191,7 +191,7 @@ TestingSetup::~TestingSetup()
     m_node.mempool.reset();
     m_node.scheduler.reset();
     m_node.chainman->Reset();
-    m_node.chainman = nullptr;
+    m_node.chainman.reset();
     pblocktree.reset();
 }
 
