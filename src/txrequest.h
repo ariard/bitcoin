@@ -148,6 +148,7 @@ public:
      *
      * It does the following:
      *  - Convert all REQUESTED announcements (for all txhashes/peers) with (expiry <= now) to COMPLETED ones.
+     *    These are returned in expired, if non-nullptr.
      *  - Requestable announcements are selected: CANDIDATE announcements from the specified peer with
      *    (reqtime <= now) for which no existing REQUESTED announcement with the same txhash from a different peer
      *    exists, and for which the specified peer is the best choice among all (reqtime <= now) CANDIDATE
@@ -157,7 +158,8 @@ public:
      *    announcement order (even if multiple were added at the same time, or when the clock went backwards while
      *    they were being added).
      */
-    std::vector<GenTxid> GetRequestable(NodeId peer, std::chrono::microseconds now);
+    std::vector<GenTxid> GetRequestable(NodeId peer, std::chrono::microseconds now,
+        std::vector<std::pair<NodeId, GenTxid>>* expired = nullptr);
 
     /** Marks a transaction as requested, with a specified expiry.
      *
