@@ -172,6 +172,24 @@ class TxDownloadTest(BitcoinTestFramework):
             assert_equal(peer_fallback.tx_getdata_count, 1)
         self.restart_node(0)  # reset mocktime
 
+    def test_disconnect_fallback(self):
+        self.log.info('Check that disconnect will select another peer for download')
+        WTXID = 0xffbb
+        peer1 = self.nodes[0].add_p2p_connection(TestP2PConn())
+        peer2 = self.nodes[0].add_p2p_connection(TestP2PConn())
+        for p in [peer1, peer2]:
+            p.send_message(msg_inv([CInv(t=MSG_WTX, h=WTXID)]))
+        # One of the peers is asked for the tx
+        peer2.wait_until(lambda: sum(p.tx_getdata_count for p in [peer1, peer2]) == 1)
+        peer_disconnect, peer_fallback = (peer1, peer2) if peer1.tx_getdata_count == 1 else (peer2, peer1)
+        with p2p_lock:
+            assert_equal(peer_fallback.tx_getdata_count, 0)
+        peer_disconnect.peer_disconnect()
+        peer_disconnect.wait_for_disconnect()
+        peer_fallback.sync_with_ping()
+        with p2p_lock:
+            assert_equal(peer_fallback.tx_getdata_count, 1)
+
     def test_notfound_fallback(self):
         self.log.info('Check that notfounds will select another peer for download immediately')
         WTXID = 0xffdd
@@ -221,6 +239,7 @@ class TxDownloadTest(BitcoinTestFramework):
     def run_test(self):
         # Run tests without mocktime that only need one peer-connection first, to avoid restarting the nodes
         self.test_expiry_fallback()
+        self.test_disconnect_fallback()
         self.test_notfound_fallback()
         self.test_preferred_inv()
         self.test_large_inv_batch()
