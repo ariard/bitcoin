@@ -418,7 +418,7 @@ private:
 
     //! Change the state of an announcement to something non-IsSelected(). If it was IsSelected(), the next best
     //! announcement will be marked CANDIDATE_BEST.
-    void ChangeAndReselect(Iter<ByTxHash> it, State new_state)
+    void ChangeAndReselect(Iter<ByTxHash> it, State new_state, bool no_reselect)
     {
         assert(new_state == State::COMPLETED || new_state == State::CANDIDATE_DELAYED);
         assert(it != m_index.get<ByTxHash>().end());
@@ -426,7 +426,7 @@ private:
             auto it_prev = std::prev(it);
             // The next best CANDIDATE_READY, if any, immediately precedes the REQUESTED or CANDIDATE_BEST
             // announcement in the ByTxHash index.
-            if (it_prev->m_txhash == it->m_txhash && it_prev->m_state == State::CANDIDATE_READY) {
+            if (!no_reselect && it_prev->m_txhash == it->m_txhash && it_prev->m_state == State::CANDIDATE_READY) {
                 // If one such CANDIDATE_READY exists (for this txhash), convert it to CANDIDATE_BEST.
                 Modify<ByTxHash>(it_prev, [](Announcement& ann){ ann.m_state = State::CANDIDATE_BEST; });
             }
@@ -454,7 +454,7 @@ private:
     /** Convert any announcement to a COMPLETED one. If there are no non-COMPLETED announcements left for this
      *  txhash, they are deleted. If this was a REQUESTED announcement, and there are other CANDIDATEs left, the
      *  best one is made CANDIDATE_BEST. Returns whether the announcement still exists. */
-    bool MakeCompleted(Iter<ByTxHash> it)
+    bool MakeCompleted(Iter<ByTxHash> it, bool no_reselect)
     {
         assert(it != m_index.get<ByTxHash>().end());
 
@@ -472,7 +472,7 @@ private:
 
         // Mark the announcement COMPLETED, and select the next best announcement (the first CANDIDATE_READY) if
         // needed.
-        ChangeAndReselect(it, State::COMPLETED);
+        ChangeAndReselect(it, State::COMPLETED, no_reselect);
 
         return true;
     }
@@ -493,7 +493,7 @@ private:
                 PromoteCandidateReady(m_index.project<ByTxHash>(it));
             } else if (it->m_state == State::REQUESTED && it->m_time <= m_now) {
                 if (expired) expired->emplace_back(it->m_peer, ToGenTxid(*it));
-                MakeCompleted(m_index.project<ByTxHash>(it));
+                MakeCompleted(m_index.project<ByTxHash>(it), false);
             } else {
                 break;
             }
@@ -526,7 +526,7 @@ public:
             // If the announcement isn't already COMPLETED, first make it COMPLETED (which will mark other
             // CANDIDATEs as CANDIDATE_BEST, or delete all of a txhash's announcements if no non-COMPLETED ones are
             // left).
-            if (MakeCompleted(m_index.project<ByTxHash>(it))) {
+            if (MakeCompleted(m_index.project<ByTxHash>(it), true)) {
                 // Then actually delete the announcement (unless it was already deleted by MakeCompleted).
                 Erase<ByPeer>(it);
             }
@@ -641,7 +641,7 @@ public:
         if (it == m_index.get<ByPeer>().end()) {
             it = m_index.get<ByPeer>().find(ByPeerView{peer, true, txhash});
         }
-        if (it != m_index.get<ByPeer>().end()) MakeCompleted(m_index.project<ByTxHash>(it));
+        if (it != m_index.get<ByPeer>().end()) MakeCompleted(m_index.project<ByTxHash>(it), false);
     }
 
     size_t CountInFlight(NodeId peer) const
