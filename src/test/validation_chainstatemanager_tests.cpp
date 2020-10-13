@@ -5,6 +5,9 @@
 #include <chainparams.h>
 #include <consensus/validation.h>
 #include <random.h>
+#include <rpc/register.h>
+#include <rpc/server.h>
+#include <scheduler.h>
 #include <sync.h>
 #include <test/util/setup_common.h>
 #include <uint256.h>
@@ -15,15 +18,62 @@
 
 #include <boost/test/unit_test.hpp>
 
-BOOST_FIXTURE_TEST_SUITE(validation_chainstatemanager_tests, TestingSetup)
+struct ChainTestingSetup : public BasicTestingSetup {
+    boost::thread_group threadGroup;
+
+    explicit ChainTestingSetup(const std::string& chainName = CBaseChainParams::MAIN, const std::vector<const char*>& extra_args = {})
+        : BasicTestingSetup(chainName, extra_args)
+    {
+        // Ideally we'd move all the RPC tests to the functional testing framework
+        // instead of unit tests, but for now we need these here.
+        RegisterAllCoreRPCCommands(tableRPC);
+
+        m_node.scheduler = MakeUnique<CScheduler>();
+
+        // We have to run a scheduler thread to prevent ActivateBestChain
+        // from blocking due to queue overrun.
+        threadGroup.create_thread([&] { TraceThread("scheduler", [&] { m_node.scheduler->serviceQueue(); }); });
+        GetMainSignals().RegisterBackgroundSignalScheduler(*m_node.scheduler);
+
+        pblocktree.reset(new CBlockTreeDB(1 << 20, true));
+
+        m_node.mempool = MakeUnique<CTxMemPool>(&::feeEstimator);
+
+        m_node.chainman = &::g_chainman;
+
+        // Start script-checking threads. Set g_parallel_script_checks to true so they are used.
+        constexpr int script_check_threads = 2;
+        for (int i = 0; i < script_check_threads; ++i) {
+            threadGroup.create_thread([i]() { return ThreadScriptCheck(i); });
+        }
+        g_parallel_script_checks = true;
+    }
+    ~ChainTestingSetup() {
+        if (m_node.scheduler) m_node.scheduler->stop();
+        threadGroup.interrupt_all();
+        threadGroup.join_all();
+        GetMainSignals().FlushBackgroundCallbacks();
+        GetMainSignals().UnregisterBackgroundSignalScheduler();
+        m_node.args = nullptr;
+        UnloadBlockIndex(m_node.mempool.get(), *m_node.chainman);
+        m_node.mempool.reset();
+        m_node.scheduler.reset();
+        m_node.chainman->Reset();
+        m_node.chainman = nullptr;
+        pblocktree.reset();
+    }
+};
+
+BOOST_FIXTURE_TEST_SUITE(validation_chainstatemanager_tests, ChainTestingSetup)
 
 //! Basic tests for ChainstateManager.
 //!
 //! First create a legacy (IBD) chainstate, then create a snapshot chainstate.
 BOOST_AUTO_TEST_CASE(chainstatemanager)
 {
-    ChainstateManager manager;
-    CTxMemPool mempool;
+    ChainstateManager& manager = *m_node.chainman;
+    CTxMemPool& mempool = *m_node.mempool;
+
     std::vector<CChainState*> chainstates;
     const CChainParams& chainparams = Params();
 
@@ -104,8 +154,9 @@ BOOST_AUTO_TEST_CASE(chainstatemanager)
 //! Test rebalancing the caches associated with each chainstate.
 BOOST_AUTO_TEST_CASE(chainstatemanager_rebalance_caches)
 {
-    ChainstateManager manager;
-    CTxMemPool mempool;
+    ChainstateManager& manager = *m_node.chainman;
+    CTxMemPool& mempool = *m_node.mempool;
+
     size_t max_cache = 10000;
     manager.m_total_coinsdb_cache = max_cache;
     manager.m_total_coinstip_cache = max_cache;
@@ -122,6 +173,7 @@ BOOST_AUTO_TEST_CASE(chainstatemanager_rebalance_caches)
     {
         LOCK(::cs_main);
         c1.InitCoinsCache(1 << 23);
+        assert(c1.LoadGenesisBlock(Params()));
         c1.CoinsTip().SetBestBlock(InsecureRand256());
         manager.MaybeRebalanceCaches();
     }
@@ -139,6 +191,7 @@ BOOST_AUTO_TEST_CASE(chainstatemanager_rebalance_caches)
     {
         LOCK(::cs_main);
         c2.InitCoinsCache(1 << 23);
+        assert(c2.LoadGenesisBlock(Params()));
         c2.CoinsTip().SetBestBlock(InsecureRand256());
         manager.MaybeRebalanceCaches();
     }
