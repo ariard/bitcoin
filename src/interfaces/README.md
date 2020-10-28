@@ -17,3 +17,46 @@ The following interfaces are defined here:
 * [`Base`](base.h) — base interface class used by multiprocess code for bookkeeping and cleanup. Added in [#19160](https://github.com/bitcoin/bitcoin/pull/19160).
 
 The interfaces above define boundaries between major components of bitcoin code (node, wallet, and gui), making it possible for them to run in [different processes](../../doc/multiprocess.md), and be tested, developed, and understood independently. These interfaces are not currently designed to be stable or to be used externally.
+
+## Process and Interface Architecture in a Multiprocess Setting
+
+```
+
+
+        process::bitcoin-gui                                                                                       process::bitcoin-node
+      _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _                                                       _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    |                                                     |                                                   |                                                      |
+
+    |        (as Init)                                    |                                                   |      ------------                                    |
+                   \                                                                                                 | NodeImpl |
+    |               V                                     |                                                   |      ------------                                    |
+                -------------                                                                                             ^             -------------
+    |           | LocalInit |                             |                                                   |          /              | LocalInit |                |
+                -------------         (as Node)                                                                     (as Node)           -------------
+    |               /        \              \             |                                                   |        /                  /         \                |
+                   /          \              V                                                                        /                  /           \
+    |   (as IpcProcess)  (as IpcProtocol) --------------- |                                                   |  ---------------   (as IpcProtocol)  (as IpcProcess) |
+                  |             \         | ProxyClient |                                                        | ProxyServer |        |             |
+    |             V              \        --------------- |                                                   |  ---------------        |             V              |
+        ------------------       |                    |                                                                  |              |       ------------------
+    |   | IpcProcessImpl |       |                    |   |                                                   |          |              |       | IpcProcessImpl |   |
+        ------------------       |                    |                                                                  |              |       ------------------
+    |             |              | thread::capnp-loop |   |                                                   |          |              |  thread::capnp-loop |      |
+                  |          _ _ | _ _ _ _ _ _ _ _ _  |                                                                  |         _ _ _| _ _ _ _ _ _ _ _     |
+    |             |              |                    |   |                                                   |          |              |                     |      |
+                  |         |    V                  | |                                                                  |        |     V                 |   |
+    |             |            -------------------    |   |                                                   |          |            ------------------      |      |
+                  ------------>| IpcProtocolImpl |  | |                                                                  |        |   | IpcProtocolImpl |<-----
+    |                          -------------------    |   |                                                   |          |            -------------------            |
+                            |      /                | |                                                                  |        |        /              |
+    |                             /                   |   |                                                   |          |                /                          |
+                            |    V                  | |                                                                  |        |      V                |
+    |                         -----------------       |   |                                                   |          |           -----------------               |
+                            | | mp::EventLoop |<-------                                                                  ----------->| mp::EventLoop |    |
+    |                         -----------------           |                                                   |                      -----------------               |
+                            | _ _ _ ^ _ _ _ _ _ _ _ |                                                                             | _ _  ^ _ _ _ _ _ _ _ _|
+    | _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ | _ _ _ _ _ _ _ _ _ _ |                                                   | _ _ _ _ _ _ _ _ _ _ _ _  | _ _ _ _ _ _ _ _ _ _ _ _ _ |
+                                    |                           Cap'n Proto serialization+socket                                         |
+                                    |----------------------------------------------------------------------------------------------------|
+
+```
