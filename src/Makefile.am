@@ -867,6 +867,7 @@ CLEANFILES += $(libbitcoin_ipc_mpgen_output)
 endif
 
 libbitcoin_ipc_mpgen_input = \
+  ipc/capnp/echo.capnp \
   ipc/capnp/init.capnp
 EXTRA_DIST += $(libbitcoin_ipc_mpgen_input)
 %.capnp:

@@ -4,7 +4,7 @@
 
 #include <interfaces/echo.h>
 
-#include <memory>
+#include <util/memory.h>
 
 namespace interfaces {
 namespace {
@@ -14,5 +14,5 @@ public:
     std::string echo(const std::string& echo) override { return echo; }
 };
 } // namespace
-std::unique_ptr<Echo> MakeEcho() { return std::make_unique<EchoImpl>(); }
+std::unique_ptr<Echo> MakeEcho() { return MakeUnique<EchoImpl>(); }
 } // namespace interfaces

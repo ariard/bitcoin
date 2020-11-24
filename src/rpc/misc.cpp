@@ -663,7 +663,7 @@ static RPCHelpMan echoipc()
                     HelpExampleRpc("echo", "\"Hello world\"")},
         [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue {
             std::unique_ptr<interfaces::Echo> echo;
-            if (interfaces::Ipc* ipc = Assert(EnsureAnyNodeContext(request.context).init)->ipc()) {
+            if (interfaces::Ipc* ipc = Assert(EnsureNodeContext(request.context).init)->ipc()) {
                 // Spawn a new bitcoin-node process and call makeEcho to get a
                 // client pointer to a interfaces::Echo instance running in
                 // that process. This is just for testing. A slightly more
