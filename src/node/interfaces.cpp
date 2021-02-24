@@ -6,12 +6,12 @@
 #include <banman.h>
 #include <chain.h>
 #include <chainparams.h>
-#include <deploymentstatus.h>
-#include <external_signer.h>
+#include <consensus/validation.h>
 #include <init.h>
 #include <interfaces/chain.h>
 #include <interfaces/handler.h>
 #include <interfaces/node.h>
+#include <interfaces/validation.h>
 #include <interfaces/wallet.h>
 #include <mapport.h>
 #include <net.h>
@@ -63,6 +63,7 @@ using interfaces::FoundBlock;
 using interfaces::Handler;
 using interfaces::MakeHandler;
 using interfaces::Node;
+using interfaces::Validation;
 using interfaces::WalletClient;
 
 namespace node {
@@ -697,6 +698,21 @@ public:
     }
     NodeContext& m_node;
 };
+
+class ValidationImpl : public Validation
+{
+public:
+    explicit ValidationImpl(NodeContext& node) : m_node(node) {}
+    bool validateHeaders(const BlockHeader& header) override
+    {
+        //BlockValidationState state;
+        //m_node.chainman->ProcessNewBlockHeaders(headers, state, Params());
+        //if (state.IsValid()) return true;
+        return false;
+    }
+    NodeContext& m_node;
+};
+
 } // namespace
 } // namespace node
 

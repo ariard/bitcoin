@@ -7,13 +7,16 @@
 
 #include <memory>
 
+struct AltnetContext;
 struct NodeContext;
 
 namespace interfaces {
+class Altnet;
 class Chain;
 class Echo;
 class Ipc;
 class Node;
+class Validation;
 class WalletClient;
 
 //! Initial interface created when a process is first started, and used to give
@@ -31,6 +34,7 @@ public:
     virtual std::unique_ptr<Chain> makeChain();
     virtual std::unique_ptr<WalletClient> makeWalletClient(Chain& chain);
     virtual std::unique_ptr<Echo> makeEcho();
+    virtual std::unique_ptr<Altnet> makeAltnet(Validation& validation);
     virtual Ipc* ipc();
 };
 
@@ -41,6 +45,9 @@ public:
 //! normally and use the Init object to spawn and connect to other processes
 //! while it is running.
 std::unique_ptr<Init> MakeNodeInit(NodeContext& node, int argc, char* argv[], int& exit_status);
+
+//! Return implementation of Init interface for the altnet process.
+std::unique_ptr<Init> MakeAltnetInit(AltnetContext& altnet, int argc, char* argv[], int& exit_status);
 
 //! Return implementation of Init interface for the wallet process.
 std::unique_ptr<Init> MakeWalletInit(int argc, char* argv[], int& exit_status);
