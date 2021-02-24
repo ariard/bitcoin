@@ -6,6 +6,7 @@
 #include <httpserver.h>
 #include <index/blockfilterindex.h>
 #include <index/txindex.h>
+#include <interfaces/altnet.h>
 #include <interfaces/chain.h>
 #include <interfaces/echo.h>
 #include <interfaces/init.h>
@@ -684,6 +685,34 @@ static RPCHelpMan echoipc()
     };
 }
 
+static RPCHelpMan startaltnet()
+{
+    return RPCHelpMan{
+        "startaltnet",
+        "Start a bitcoin-altnet instance.\n",
+        {},
+        RPCResult{RPCResult::Type::BOOL, "success", "If the altnet daemon has been successfully started"},
+        RPCExamples{""},
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    UniValue result(UniValue::VBOOL);
+    NodeContext& node = EnsureNodeContext(request.context);
+    if (interfaces::Ipc* ipc = Assert(EnsureNodeContext(request.context).init)->ipc()) {
+        LogPrintf("Trying to spawn process.\n");
+        auto server = ipc->spawnProcess("bitcoin-altnet");
+        node.altnet = server->makeAltnet(*node.validation);
+        node.init->ipc()->addCleanup(*node.altnet, [server = server.release()] { delete server; });
+    } else {
+        LogPrintf("Failed to get a node context.\n");
+        result.pushKV("success", false);
+    }
+    //node.altnet->starttransport(node.validation);
+    result.pushKV("success", true);
+    return result;
+},
+    };
+}
+
 static UniValue SummaryToJSON(const IndexSummary&& summary, std::string index_name)
 {
     UniValue ret_summary(UniValue::VOBJ);
@@ -760,6 +789,7 @@ static const CRPCCommand commands[] =
     { "hidden",             &echo,                    },
     { "hidden",             &echojson,                },
     { "hidden",             &echoipc,                 },
+    { "hidden",             &startaltnet,             },
 };
 // clang-format on
     for (const auto& c : commands) {

@@ -112,11 +112,16 @@ if BUILD_BITCOIN_UTIL
   bin_PROGRAMS += bitcoin-util
 endif
 
+if BUILD_BITCOIN_ALTNET
+  bin_PROGRAMS += bitcoin-altnet
+endif
+
 .PHONY: FORCE check-symbols check-security
 # bitcoin core #
 BITCOIN_CORE_H = \
   addrdb.h \
   addrman.h \
+  altnet/context.h \
   attributes.h \
   banman.h \
   base58.h \
@@ -156,12 +161,14 @@ BITCOIN_CORE_H = \
   index/txindex.h \
   indirectmap.h \
   init.h \
+  interfaces/altnet.h \
   interfaces/chain.h \
   interfaces/echo.h \
   interfaces/handler.h \
   interfaces/init.h \
   interfaces/ipc.h \
   interfaces/node.h \
+  interfaces/validation.h \
   interfaces/wallet.h \
   key.h \
   key_io.h \
@@ -555,12 +562,14 @@ libbitcoin_common_a_SOURCES = \
 libbitcoin_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_util_a_SOURCES = \
+  altnet/context.cpp \
   support/lockedpool.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
   compat/glibcxx_sanity.cpp \
   compat/strnlen.cpp \
   fs.cpp \
+  interfaces/altnet.cpp \
   interfaces/echo.cpp \
   interfaces/handler.cpp \
   interfaces/init.cpp \
@@ -724,6 +733,17 @@ bitcoin_util_LDADD = \
 bitcoin_util_LDADD += $(BOOST_LIBS)
 #
 
+# bitcoin-altnet binary #
+if BUILD_BITCOIN_ALTNET
+bitcoin_altnet_SOURCES = altnet/bitcoin.cpp \
+  init/bitcoin-altnet.cpp
+bitcoin_altnet_CPPFLAGS = $(bitcoin_bin_cppflags)
+bitcoin_altnet_CXXFLAGS = $(bitcoin_bin_cxxflags)
+bitcoin_altnet_LDFLAGS = $(bitcoin_bin_ldflags)
+bitcoin_altnet_LDADD = $(bitcoin_bin_ldadd) $(LIBBITCOIN_IPC) $(LIBMULTIPROCESS_LIBS)
+endif
+#
+
 # bitcoinconsensus library #
 if BUILD_BITCOIN_LIBS
 include_HEADERS = script/bitcoinconsensus.h
@@ -814,8 +834,10 @@ if HARDEN
 endif
 
 libbitcoin_ipc_mpgen_input = \
+  ipc/capnp/altnet.capnp \
   ipc/capnp/echo.capnp \
-  ipc/capnp/init.capnp
+  ipc/capnp/init.capnp \
+  ipc/capnp/validation.capnp
 EXTRA_DIST += $(libbitcoin_ipc_mpgen_input)
 %.capnp:
 

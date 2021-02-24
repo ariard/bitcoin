@@ -38,11 +38,11 @@ public:
     {
         int pid;
         int fd = m_process->spawn(new_exe_name, m_arg0, pid);
-        LogPrint(::BCLog::IPC, "Process %s pid %i launched\n", new_exe_name, pid);
+        LogPrintf("Process %s pid %i launched\n", new_exe_name, pid);
         auto init = m_protocol->connect(fd, m_exe_name);
         Ipc::addCleanup(*init, [this, new_exe_name, pid] {
             int status = m_process->waitSpawned(pid);
-            LogPrint(::BCLog::IPC, "Process %s pid %i exited with status %i\n", new_exe_name, pid, status);
+            LogPrintf("Process %s pid %i exited with status %i\n", new_exe_name, pid, status);
         });
         return init;
     }
@@ -53,7 +53,9 @@ public:
         if (!m_process->checkSpawned(argc, argv, fd)) {
             return false;
         }
+        LogPrintf("Check spawned good !\n");
         m_protocol->serve(fd, m_exe_name, m_init);
+        LogPrintf("Exit from serve...?\n");
         exit_status = EXIT_SUCCESS;
         return true;
     }
