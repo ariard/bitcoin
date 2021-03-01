@@ -161,6 +161,7 @@ BITCOIN_CORE_H = \
   interfaces/init.h \
   interfaces/ipc.h \
   interfaces/node.h \
+  interfaces/validation.h \
   interfaces/wallet.h \
   key.h \
   key_io.h \
