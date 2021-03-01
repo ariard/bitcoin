@@ -112,6 +112,10 @@ if BUILD_BITCOIN_UTIL
   bin_PROGRAMS += bitcoin-util
 endif
 
+if BUILD_BITCOIN_ALTNET
+  bin_PROGRAMS += bitcoin-altnet
+endif
+
 .PHONY: FORCE check-symbols check-security
 # bitcoin core #
 BITCOIN_CORE_H = \
@@ -707,6 +711,16 @@ bitcoin_util_LDADD = \
   $(LIBSECP256K1)
 
 bitcoin_util_LDADD += $(BOOST_LIBS)
+#
+
+# bitcoin-altnet binary #
+if BUILD_BITCOIN_ALTNET
+bitcoin_altnet_SOURCES = altnet/bitcoin.cpp
+bitcoin_altnet_CPPFLAGS = $(bitcoin_bin_cppflags)
+bitcoin_altnet_CXXFLAGS = $(bitcoin_bin_cxxflags)
+bitcoin_altnet_LDFLAGS = $(bitcoin_bin_ldflags)
+bitcoin_altnet_LDADD = $(bitcoin_bin_ldadd) $(LIBBITCOIN_IPC) $(LIBMULTIPROCESS_LIBS)
+endif
 #
 
 # bitcoinconsensus library #

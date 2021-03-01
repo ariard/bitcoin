@@ -28,6 +28,8 @@ BITCOIN_WALLET_TOOL_NAME=bitcoin-wallet
 dnl Multi Process
 BITCOIN_MP_NODE_NAME=bitcoin-node
 BITCOIN_MP_GUI_NAME=bitcoin-gui
+dnl Altnet
+BITCOIN_ALTNET_NAME=bitcoin-altnet
 
 dnl Unless the user specified ARFLAGS, force it to be cr
 AC_ARG_VAR(ARFLAGS, [Flags for the archiver, defaults to <cr> if not set])
@@ -291,6 +293,12 @@ AC_ARG_ENABLE([multiprocess],
   [build multiprocess bitcoin-node, bitcoin-wallet, and bitcoin-gui executables in addition to monolithic bitcoind and bitcoin-qt executables. Requires libmultiprocess library. Experimental (default is no)])],
   [enable_multiprocess=$enableval],
   [enable_multiprocess=no])
+
+AC_ARG_ENABLE([altnet],
+  [AS_HELP_STRING([--enable-altnet],
+  [build bitcoin-altnet. Experimental (default is no)])],
+  [enable_altnet=$enableval],
+  [enable_altnet=no])
 
 AC_ARG_ENABLE(man,
     [AS_HELP_STRING([--disable-man],
@@ -1524,6 +1532,18 @@ if test x$build_multiprocess != xno; then
   AC_SUBST(MPGEN_PREFIX)
 fi
 
+dnl Enable altnet check
+
+build_altnet=no
+if test "x$enable_altnet" = xyes; then
+    if test "x$build_multiprocess" != xyes; then
+        AC_MSG_ERROR([--enable-altnet=yes option specified but cannot be built without multiprocess support. Use --enable-multiprocess=yes."])
+    fi
+    build_altnet=yes
+fi
+
+AM_CONDITIONAL([BUILD_BITCOIN_ALTNET],[test "x$build_altnet" = xyes])
+
 AC_MSG_CHECKING([whether to build bitcoind])
 AM_CONDITIONAL([BUILD_BITCOIND], [test x$build_bitcoind = xyes])
 AC_MSG_RESULT($build_bitcoind)
@@ -1750,6 +1770,7 @@ AC_SUBST(BITCOIN_UTIL_NAME)
 AC_SUBST(BITCOIN_WALLET_TOOL_NAME)
 AC_SUBST(BITCOIN_MP_NODE_NAME)
 AC_SUBST(BITCOIN_MP_GUI_NAME)
+AC_SUBST(BITCOIN_ALTNET_NAME)
 
 AC_SUBST(RELDFLAGS)
 AC_SUBST(DEBUG_CPPFLAGS)
@@ -1852,6 +1873,7 @@ echo
 echo "Options used to compile and link:"
 echo "  boost process = $ax_cv_boost_process"
 echo "  multiprocess  = $build_multiprocess"
+echo "  altnet        = $build_altnet"
 echo "  with wallet   = $enable_wallet"
 if test "x$enable_wallet" != "xno"; then
     echo "    with sqlite = $use_sqlite"
