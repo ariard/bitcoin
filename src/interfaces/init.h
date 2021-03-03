@@ -42,6 +42,9 @@ public:
 //! while it is running.
 std::unique_ptr<Init> MakeNodeInit(NodeContext& node, int argc, char* argv[], int& exit_status);
 
+//! Return implementation of Init interface for the altnet process.
+std::unique_ptr<Init> MakeAltnetInit(int argc, char* argv[], int& exit_status);
+
 //! Return implementation of Init interface for the wallet process.
 std::unique_ptr<Init> MakeWalletInit(int argc, char* argv[], int& exit_status);
 
