@@ -15,10 +15,14 @@ const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 int main(int argc, char* argv[])
 {
     int exit_status;
-    std::unique_ptr<interfaces::Init> init = interfaces::MakeAltnetInit(argc, argv, exit_status);
-    if (!init) {
-        return exit_status;
-    }
+    //std::unique_ptr<interfaces::Init> init = interfaces::MakeAltnetInit(argc, argv, exit_status);
+    //if (!init) {
+    //    return exit_status;
+    //}
 
     SetupEnvironment();
+    //TODO?
+    LogPrintf("Altnet started!\n");
+
+    while (true) {}
 }

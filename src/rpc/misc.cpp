@@ -681,6 +681,31 @@ static RPCHelpMan echoipc()
     };
 }
 
+static RPCHelpMan startaltnet()
+{
+    return RPCHelpMan{
+        "startaltnet",
+        "Start a bitcoin-altnet instance.\n",
+        {},
+        RPCResult{RPCResult::Type::BOOL, "success", "If the altnet daemon has been successfully started"},
+        RPCExamples{""},
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    UniValue result(UniValue::VBOOL);
+    LogPrintf("Start Altnet.\n");
+    if (interfaces::Ipc* ipc = Assert(EnsureNodeContext(request.context).init)->ipc()) {
+        LogPrintf("Trying to spawn process.\n");
+        auto init = ipc->spawnProcess("bitcoin-altnet");
+        result.pushKV("success", true);
+    } else {
+        LogPrintf("Failed to get a node context.\n");
+        result.pushKV("success", false);
+    }
+    return result;
+},
+    };
+}
+
 static UniValue SummaryToJSON(const IndexSummary&& summary, std::string index_name)
 {
     UniValue ret_summary(UniValue::VOBJ);
@@ -757,6 +782,7 @@ static const CRPCCommand commands[] =
     { "hidden",             &echo,                    },
     { "hidden",             &echojson,                },
     { "hidden",             &echoipc,                 },
+    { "hidden",             &startaltnet,             },
 };
 // clang-format on
     for (const auto& c : commands) {
