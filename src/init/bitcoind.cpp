@@ -14,7 +14,7 @@ namespace {
 class BitcoindInit : public interfaces::Init
 {
 public:
-    BitcoindInit(NodeContext& node, const char* arg0) : m_node(node),
+    BitcoindInit(NodeContext& node) : m_node(node)
     {
         m_node.init = this;
     }
