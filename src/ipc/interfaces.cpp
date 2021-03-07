@@ -53,7 +53,9 @@ public:
         if (!m_process->checkSpawned(argc, argv, fd)) {
             return false;
         }
+        LogPrintf("Check spawned good !\n");
         m_protocol->serve(fd, m_exe_name, m_init);
+        LogPrintf("Exit from serve...?\n");
         exit_status = EXIT_SUCCESS;
         return true;
     }

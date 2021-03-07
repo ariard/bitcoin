@@ -6,6 +6,7 @@
 #include <httpserver.h>
 #include <index/blockfilterindex.h>
 #include <index/txindex.h>
+#include <interfaces/altnet.h>
 #include <interfaces/chain.h>
 #include <interfaces/echo.h>
 #include <interfaces/init.h>
@@ -692,15 +693,17 @@ static RPCHelpMan startaltnet()
         [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     UniValue result(UniValue::VBOOL);
-    LogPrintf("Start Altnet.\n");
+    std::unique_ptr<interfaces::Altnet> altnet;
     if (interfaces::Ipc* ipc = Assert(EnsureNodeContext(request.context).init)->ipc()) {
         LogPrintf("Trying to spawn process.\n");
         auto init = ipc->spawnProcess("bitcoin-altnet");
-        result.pushKV("success", true);
+        altnet = init->makeAltnet();
+        ipc->addCleanup(*altnet, [init = init.release()] { delete init; });
     } else {
         LogPrintf("Failed to get a node context.\n");
         result.pushKV("success", false);
     }
+    result.pushKV("success", true);
     return result;
 },
     };

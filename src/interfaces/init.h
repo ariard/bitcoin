@@ -10,6 +10,7 @@
 struct NodeContext;
 
 namespace interfaces {
+class Altnet;
 class Chain;
 class Echo;
 class Ipc;
@@ -31,6 +32,7 @@ public:
     virtual std::unique_ptr<Chain> makeChain();
     virtual std::unique_ptr<WalletClient> makeWalletClient(Chain& chain);
     virtual std::unique_ptr<Echo> makeEcho();
+    virtual std::unique_ptr<Altnet> makeAltnet();
     virtual Ipc* ipc();
 };
 

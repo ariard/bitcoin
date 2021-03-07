@@ -159,6 +159,7 @@ BITCOIN_CORE_H = \
   index/txindex.h \
   indirectmap.h \
   init.h \
+  interfaces/altnet.h \
   interfaces/chain.h \
   interfaces/echo.h \
   interfaces/handler.h \
@@ -554,6 +555,7 @@ libbitcoin_util_a_SOURCES = \
   compat/glibcxx_sanity.cpp \
   compat/strnlen.cpp \
   fs.cpp \
+  interfaces/altnet.cpp \
   interfaces/echo.cpp \
   interfaces/handler.cpp \
   interfaces/init.cpp \

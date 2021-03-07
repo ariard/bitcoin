@@ -22,7 +22,6 @@ int main(int argc, char* argv[])
     SelectBaseParams(CBaseChainParams::MAIN);
 
     LogInstance().m_print_to_file = true;
-    //LogInstance().m_file_path = "/home/user/.bitcoin/debug-altnet.log";
     LogInstance().m_file_path = "debug-altnet.log";
     LogInstance().m_print_to_console = false;
     LogInstance().m_log_timestamps = DEFAULT_LOGTIMESTAMPS;
@@ -35,6 +34,7 @@ int main(int argc, char* argv[])
 
     std::unique_ptr<interfaces::Init> init = interfaces::MakeAltnetInit(argc, argv, exit_status);
     if (!init) {
+        LogPrintf("startSpawnedProcess failure\n");
         return exit_status;
     }
 

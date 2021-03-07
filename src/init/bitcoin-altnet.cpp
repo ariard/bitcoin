@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <interfaces/altnet.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
 #include <util/memory.h>
@@ -17,6 +18,7 @@ class BitcoinAltnetInit : public interfaces::Init
 public:
     BitcoinAltnetInit(const char* arg0)
         : m_ipc(interfaces::MakeIpc(EXE_NAME, arg0, *this)) {}
+    std::unique_ptr<interfaces::Altnet> makeAltnet() override { return interfaces::MakeAltnet(); }
     interfaces::Ipc* ipc() override { return m_ipc.get(); }
     std::unique_ptr<interfaces::Ipc> m_ipc;
 };
