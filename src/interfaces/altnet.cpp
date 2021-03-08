@@ -11,7 +11,7 @@ namespace {
 class AltnetImpl : public Altnet
 {
 public:
-    void start_transport() override {}
+    void starttransport() override {}
 };
 } // namespace
 std::unique_ptr<Altnet> MakeAltnet() { return MakeUnique<AltnetImpl>(); }

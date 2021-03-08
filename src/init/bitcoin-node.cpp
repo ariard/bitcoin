@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <interfaces/altnet.h>
 #include <interfaces/echo.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
@@ -24,6 +25,7 @@ public:
         m_node.init = this;
     }
     std::unique_ptr<interfaces::Echo> makeEcho() override { return interfaces::MakeEcho(); }
+    std::unique_ptr<interfaces::Altnet> makeAltnet() override { return interfaces::MakeAltnet(); }
     interfaces::Ipc* ipc() override { return m_ipc.get(); }
     NodeContext& m_node;
     std::unique_ptr<interfaces::Ipc> m_ipc;

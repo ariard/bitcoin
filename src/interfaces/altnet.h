@@ -13,7 +13,7 @@ class Altnet
 public:
     virtual ~Altnet() {}
 
-    virtual void start_transport() = 0;
+    virtual void starttransport() = 0;
 };
 std::unique_ptr<Altnet> MakeAltnet();
 }
