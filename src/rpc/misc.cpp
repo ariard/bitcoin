@@ -693,12 +693,12 @@ static RPCHelpMan startaltnet()
         [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     UniValue result(UniValue::VBOOL);
-    std::unique_ptr<interfaces::Altnet> altnet;
     if (interfaces::Ipc* ipc = Assert(EnsureNodeContext(request.context).init)->ipc()) {
         LogPrintf("Trying to spawn process.\n");
-        auto init = ipc->spawnProcess("bitcoin-altnet");
-        altnet = init->makeAltnet();
-        ipc->addCleanup(*altnet, [init = init.release()] { delete init; });
+        NodeContext& node = EnsureNodeContext(request.context);
+        auto server = ipc->spawnProcess("bitcoin-altnet");
+        node.altnet = server->makeAltnet();
+        node.init->ipc()->addCleanup(*node.altnet, [server = server.release()] { delete server; });
     } else {
         LogPrintf("Failed to get a node context.\n");
         result.pushKV("success", false);

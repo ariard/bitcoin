@@ -19,6 +19,7 @@ class CTxMemPool;
 class ChainstateManager;
 class PeerManager;
 namespace interfaces {
+class Altnet;
 class Chain;
 class ChainClient;
 class Init;
@@ -46,6 +47,7 @@ struct NodeContext {
     std::unique_ptr<BanMan> banman;
     ArgsManager* args{nullptr}; // Currently a raw pointer because the memory is not managed by this struct
     std::unique_ptr<interfaces::Chain> chain;
+    std::unique_ptr<interfaces::Altnet> altnet;
     //! List of all chain clients (wallet processes or other client) connected to node.
     std::vector<std::unique_ptr<interfaces::ChainClient>> chain_clients;
     //! Reference to chain client that should used to load or create wallets
