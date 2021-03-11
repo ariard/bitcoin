@@ -5,13 +5,16 @@
 #include <interfaces/altnet.h>
 
 #include <util/memory.h>
+#include <util/system.h>
 
 namespace interfaces {
 namespace {
 class AltnetImpl : public Altnet
 {
 public:
-    void starttransport() override {}
+    bool starttransport() override {
+        return true;
+    }
 };
 } // namespace
 std::unique_ptr<Altnet> MakeAltnet() { return MakeUnique<AltnetImpl>(); }

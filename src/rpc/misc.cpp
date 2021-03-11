@@ -693,15 +693,18 @@ static RPCHelpMan startaltnet()
         [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
 {
     UniValue result(UniValue::VBOOL);
+    NodeContext& node = EnsureNodeContext(request.context);
     if (interfaces::Ipc* ipc = Assert(EnsureNodeContext(request.context).init)->ipc()) {
         LogPrintf("Trying to spawn process.\n");
-        NodeContext& node = EnsureNodeContext(request.context);
         auto server = ipc->spawnProcess("bitcoin-altnet");
         node.altnet = server->makeAltnet();
         node.init->ipc()->addCleanup(*node.altnet, [server = server.release()] { delete server; });
     } else {
         LogPrintf("Failed to get a node context.\n");
         result.pushKV("success", false);
+    }
+    if (node.altnet->starttransport()) {
+        LogPrintf("Connection to Altnet established");
     }
     result.pushKV("success", true);
     return result;
