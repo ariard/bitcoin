@@ -32,7 +32,8 @@ int main(int argc, char* argv[])
         throw std::runtime_error(strprintf("Could not open debug log file %s", LogInstance().m_file_path.string()));
     }
 
-    std::unique_ptr<interfaces::Init> init = interfaces::MakeAltnetInit(argc, argv, exit_status);
+    AltnetContext altnet;
+    std::unique_ptr<interfaces::Init> init = interfaces::MakeAltnetInit(altnet, argc, argv, exit_status);
     if (!init) {
         LogPrintf("startSpawnedProcess failure\n");
         return exit_status;

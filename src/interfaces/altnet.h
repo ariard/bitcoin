@@ -5,6 +5,9 @@
 #ifndef BITCOIN_INTERFACES_ALTNET_H
 #define BITCOIN_INTERFACES_ALTNET_H
 
+#include <altnet/context.h>
+#include <interfaces/validation.h>
+
 #include <memory>
 
 namespace interfaces {
@@ -13,9 +16,9 @@ class Altnet
 public:
     virtual ~Altnet() {}
 
-    virtual bool starttransport() = 0;
+    //virtual bool starttransport(interfaces::Validation& validation);
 };
-std::unique_ptr<Altnet> MakeAltnet();
+std::unique_ptr<Altnet> MakeAltnet(interfaces::Validation& validation);
 }
 
 #endif // BITCOIN_INTERFACES_ALTNET_H

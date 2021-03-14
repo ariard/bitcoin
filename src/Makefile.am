@@ -121,6 +121,7 @@ endif
 BITCOIN_CORE_H = \
   addrdb.h \
   addrman.h \
+  altnet/context.h \
   attributes.h \
   banman.h \
   base58.h \
@@ -717,7 +718,9 @@ bitcoin_util_LDADD += $(BOOST_LIBS)
 
 # bitcoin-altnet binary #
 if BUILD_BITCOIN_ALTNET
-bitcoin_altnet_SOURCES = altnet/bitcoin.cpp init/bitcoin-altnet.cpp
+bitcoin_altnet_SOURCES = altnet/bitcoin.cpp \
+  init/bitcoin-altnet.cpp \
+  altnet/context.cpp
 bitcoin_altnet_CPPFLAGS = $(bitcoin_bin_cppflags)
 bitcoin_altnet_CXXFLAGS = $(bitcoin_bin_cxxflags)
 bitcoin_altnet_LDFLAGS = $(bitcoin_bin_ldflags)
@@ -817,7 +820,8 @@ endif
 libbitcoin_ipc_mpgen_input = \
   ipc/capnp/altnet.capnp \
   ipc/capnp/echo.capnp \
-  ipc/capnp/init.capnp
+  ipc/capnp/init.capnp \
+  ipc/capnp/validation.capnp
 EXTRA_DIST += $(libbitcoin_ipc_mpgen_input)
 %.capnp:
 

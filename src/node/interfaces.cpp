@@ -667,11 +667,11 @@ class ValidationImpl : public Validation
 {
 public:
     explicit ValidationImpl(NodeContext& node) : m_node(node) {}
-    bool ValidateHeaders(const std::vector<CBlockHeader>& headers) override
+    bool validateHeaders(const CBlockHeader& header) override
     {
-        BlockValidationState state;
-        m_node.chainman->ProcessNewBlockHeaders(headers, state, Params());
-        if (state.IsValid()) return true;
+        //BlockValidationState state;
+        //m_node.chainman->ProcessNewBlockHeaders(headers, state, Params());
+        //if (state.IsValid()) return true;
         return false;
     }
     NodeContext& m_node;

@@ -5,6 +5,10 @@
 #ifndef BITCOIN_INTERFACES_VALIDATION_H
 #define BITCOIN_INTERFACES_VALIDATION_H
 
+#include <primitives/block.h>
+
+#include <vector>
+
 namespace interfaces {
 
 //! Inteface giving clients access to the validation engine.
@@ -14,7 +18,7 @@ public:
     virtual ~Validation() {}
 
     // Check if headers are valid.
-    virtual bool ValidateHeaders(const std::vector<CBlockHeader>& headers) = 0;
+    virtual bool validateHeaders(const CBlockHeader& header) = 0;
 };
 
 } // namespace interfaces

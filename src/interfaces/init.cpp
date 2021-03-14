@@ -14,6 +14,6 @@ std::unique_ptr<Node> Init::makeNode() { return {}; }
 std::unique_ptr<Chain> Init::makeChain() { return {}; }
 std::unique_ptr<WalletClient> Init::makeWalletClient(Chain& chain) { return {}; }
 std::unique_ptr<Echo> Init::makeEcho() { return {}; }
-std::unique_ptr<Altnet> Init::makeAltnet() { return {}; }
+std::unique_ptr<Altnet> Init::makeAltnet(Validation& validation) { return {}; }
 Ipc* Init::ipc() { return nullptr; }
 } // namespace interfaces

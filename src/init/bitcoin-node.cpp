@@ -25,7 +25,7 @@ public:
         m_node.init = this;
     }
     std::unique_ptr<interfaces::Echo> makeEcho() override { return interfaces::MakeEcho(); }
-    std::unique_ptr<interfaces::Altnet> makeAltnet() override { return interfaces::MakeAltnet(); }
+    std::unique_ptr<interfaces::Altnet> makeAltnet(interfaces::Validation& validation) override { return interfaces::MakeAltnet(validation); }
     interfaces::Ipc* ipc() override { return m_ipc.get(); }
     NodeContext& m_node;
     std::unique_ptr<interfaces::Ipc> m_ipc;

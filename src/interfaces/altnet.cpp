@@ -12,10 +12,13 @@ namespace {
 class AltnetImpl : public Altnet
 {
 public:
-    bool starttransport() override {
-        return true;
+    AltnetImpl(AltnetContext& altnet, interfaces::Validation& validation) {
+        m_context = altnet;
+        m_context.validation = &validation;
     }
+
+    AltnetContext m_context;
 };
 } // namespace
-std::unique_ptr<Altnet> MakeAltnet() { return MakeUnique<AltnetImpl>(); }
+//std::unique_ptr<Altnet> MakeAltnet(interfaces::Validation& validation) { return MakeUnique<Altnet>(validation); }
 } // namespace interfaces
