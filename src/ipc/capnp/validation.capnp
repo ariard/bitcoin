@@ -16,7 +16,8 @@ interface Validation $Proxy.wrap("interfaces::Validation") {
     validateHeaders @1 (context :Proxy.Context, headers :BlockHeader) -> (result: Bool);
 }
 
-struct BlockHeader {
+struct BlockHeader $Proxy.wrap("BlockHeader")
+{
     nVersion @0 :Int32;
     hashPrevBlock @1 :Data;
     hashMerkleRoot @2 :Data;

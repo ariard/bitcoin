@@ -21,6 +21,16 @@ public:
     virtual bool validateHeaders(const CBlockHeader& header) = 0;
 };
 
+struct BlockHeader
+{
+    int32_t nVersion;
+    uint256 hashPrevBlock;
+    uint256 hashMerkleRoot;
+    uint32_t nTime;
+    uint32_t nBits;
+    uint32_t nNonce;
+}
+
 } // namespace interfaces
 
 #endif // BITCOIN_INTERFACES_VALIDATION_H
