@@ -667,7 +667,7 @@ class ValidationImpl : public Validation
 {
 public:
     explicit ValidationImpl(NodeContext& node) : m_node(node) {}
-    bool validateHeaders(const CBlockHeader& header) override
+    bool validateHeaders() override
     {
         //BlockValidationState state;
         //m_node.chainman->ProcessNewBlockHeaders(headers, state, Params());

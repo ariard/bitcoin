@@ -4,7 +4,5 @@
 
 #include <altnet/context.h>
 
-#include <interfaces/validation.h>
-
 AltnetContext::AltnetContext() {}
 AltnetContext::~AltnetContext() {}

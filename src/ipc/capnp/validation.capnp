@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-@0x888b4f7f51e691f4;
+@0x888b4f7f51e69123;
 
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("ipc::capnp::messages");
@@ -13,15 +13,22 @@ $Proxy.include("ipc/capnp/validation.capnp.h");
 
 interface Validation $Proxy.wrap("interfaces::Validation") {
     destroy @0 (context :Proxy.Context) -> ();
-    validateHeaders @1 (context :Proxy.Context, headers :BlockHeader) -> (result: Bool);
+    validateHeaders @1 (context :Proxy.Context) -> (result: Bool);
 }
 
-struct BlockHeader $Proxy.wrap("BlockHeader")
+#struct BlockHeader $Proxy.wrap("BlockHeader")
+#{
+#    nVersion @0 :Int32;
+#    hashPrevBlock @1 :Data;
+#    hashMerkleRoot @2 :Data;
+#    nTime @3 :UInt32;
+#    nBits @4 :UInt32;
+#    nNonce @5 :UInt32;
+#}
+
+struct WitnessUnknown $Proxy.wrap("WitnessUnknown")
 {
-    nVersion @0 :Int32;
-    hashPrevBlock @1 :Data;
-    hashMerkleRoot @2 :Data;
-    nTime @3 :UInt32;
-    nBits @4 :UInt32;
-    nNonce @5 :UInt32;
+    version @0 :UInt32;
+    length @1 :UInt32;
+    program @2 :Data;
 }

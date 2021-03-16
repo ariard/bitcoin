@@ -549,6 +549,7 @@ libbitcoin_common_a_SOURCES = \
 libbitcoin_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_util_a_SOURCES = \
+  altnet/context.cpp \
   support/lockedpool.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
@@ -719,8 +720,7 @@ bitcoin_util_LDADD += $(BOOST_LIBS)
 # bitcoin-altnet binary #
 if BUILD_BITCOIN_ALTNET
 bitcoin_altnet_SOURCES = altnet/bitcoin.cpp \
-  init/bitcoin-altnet.cpp \
-  altnet/context.cpp
+  init/bitcoin-altnet.cpp
 bitcoin_altnet_CPPFLAGS = $(bitcoin_bin_cppflags)
 bitcoin_altnet_CXXFLAGS = $(bitcoin_bin_cxxflags)
 bitcoin_altnet_LDFLAGS = $(bitcoin_bin_ldflags)
