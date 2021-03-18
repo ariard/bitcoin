@@ -5,12 +5,13 @@
 #ifndef BITCOIN_INTERFACES_VALIDATION_H
 #define BITCOIN_INTERFACES_VALIDATION_H
 
-#include <primitives/block.h>
 #include <script/standard.h>
 
 #include <vector>
 
 namespace interfaces {
+
+struct BlockHeader;
 
 //! Inteface giving clients access to the validation engine.
 class Validation
@@ -19,18 +20,14 @@ public:
     virtual ~Validation() {}
 
     // Check if headers are valid.
-    virtual bool validateHeaders() = 0;
+    virtual bool validateHeaders(const BlockHeader& header) = 0;
 };
 
-//struct BlockHeader
-//{
-//    int32_t nVersion;
-//    uint256 hashPrevBlock;
-//    uint256 hashMerkleRoot;
-//    uint32_t nTime;
-//    uint32_t nBits;
-//    uint32_t nNonce;
-//};
+struct BlockHeader {
+    int block_version;
+    uint64_t block_time;
+    uint256 block_hash;
+};
 
 } // namespace interfaces
 

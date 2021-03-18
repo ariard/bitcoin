@@ -13,22 +13,12 @@ $Proxy.include("ipc/capnp/validation.capnp.h");
 
 interface Validation $Proxy.wrap("interfaces::Validation") {
     destroy @0 (context :Proxy.Context) -> ();
-    validateHeaders @1 (context :Proxy.Context) -> (result: Bool);
+    validateHeaders @1 (context :Proxy.Context, header: BlockHeader) -> (result: Bool);
 }
 
-#struct BlockHeader $Proxy.wrap("BlockHeader")
-#{
-#    nVersion @0 :Int32;
-#    hashPrevBlock @1 :Data;
-#    hashMerkleRoot @2 :Data;
-#    nTime @3 :UInt32;
-#    nBits @4 :UInt32;
-#    nNonce @5 :UInt32;
-#}
-
-struct WitnessUnknown $Proxy.wrap("WitnessUnknown")
+struct BlockHeader $Proxy.wrap("interfaces::BlockHeader")
 {
-    version @0 :UInt32;
-    length @1 :UInt32;
-    program @2 :Data;
+    blockVersion @0 :Int32 $Proxy.name("block_version");
+    blockTime @1 :UInt64 $Proxy.name("block_time");
+    blockHash @2 :Data $Proxy.name("block_hash");
 }
