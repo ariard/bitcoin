@@ -18,7 +18,7 @@ template <typename T>
 T Unserialize(T& value, const kj::ArrayPtr<const kj::byte>& data)
 {
     // Could optimize, it unnecessarily copies the data into a temporary vector.
-    CDataStream stream(CSerializeData{data.begin(), data.end()}, SER_NETWORK, CLIENT_VERSION);
+    CDataStream stream(SerializeData{data.begin(), data.end()}, SER_NETWORK, CLIENT_VERSION);
     value.Unserialize(stream);
     return value;
 }
@@ -90,7 +90,7 @@ decltype(auto) CustomReadField(
         auto data = input.get();
         // Note: stream copy here is unnecessary, and can be avoided in the future
         // when `VectorReader` from #12254 is added.
-        CDataStream stream(CSerializeData{data.begin(), data.end()}, SER_NETWORK, CLIENT_VERSION);
+        CDataStream stream(SerializeData{data.begin(), data.end()}, SER_NETWORK, CLIENT_VERSION);
         value.Unserialize(stream);
     });
 }

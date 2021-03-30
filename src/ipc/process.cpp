@@ -7,7 +7,6 @@
 #include <ipc/protocol.h>
 #include <mp/util.h>
 #include <tinyformat.h>
-#include <util/memory.h>
 #include <util/strencodings.h>
 
 #include <cstdint>
@@ -58,5 +57,5 @@ public:
 };
 } // namespace
 
-std::unique_ptr<Process> MakeProcess() { return MakeUnique<ProcessImpl>(); }
+std::unique_ptr<Process> MakeProcess() { return std::make_unique<ProcessImpl>(); }
 } // namespace ipc

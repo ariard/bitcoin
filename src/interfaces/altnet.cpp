@@ -5,7 +5,6 @@
 #include <altnet/context.h>
 #include <interfaces/altnet.h>
 
-#include <util/memory.h>
 #include <util/system.h>
 
 namespace interfaces {
@@ -22,6 +21,6 @@ public:
 };
 } // namespace
 std::unique_ptr<Altnet> MakeAltnet(AltnetContext& altnet, interfaces::Validation& validation) {
-    return MakeUnique<AltnetImpl>(altnet, validation);
+    return std::make_unique<AltnetImpl>(altnet, validation);
 }
 } // namespace interfaces
