@@ -7,7 +7,6 @@
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
 #include <node/ui_interface.h>
-#include <util/memory.h>
 #include <util/translation.h>
 
 #include <memory>
@@ -30,13 +29,11 @@ public:
 } // namespace
 } // namespace init
 
-namespace interfaces {
 void StartAltnet(AltnetContext& altnet, int argc, char* argv[], int& exit_status)
 {
-    auto init = MakeUnique<init::BitcoinAltnetInit>(altnet, argc > 0 ? argv[0] : "");
+    auto init = std::make_unique<init::BitcoinAltnetInit>(altnet, argc > 0 ? argv[0] : "");
     if (!init->m_ipc->startSpawnedProcess(argc, argv, exit_status)) {
-        InitError(Untranslated("bitcoin-altnet called incorrectly (not as a spawned process), exiting."));
+        //InitError(Untranslated("bitcoin-altnet called incorrectly (not as a spawned process), exiting."));
         exit_status = 1;
     }
 }
-} // namespace interfaces

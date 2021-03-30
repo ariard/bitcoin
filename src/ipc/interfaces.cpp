@@ -10,7 +10,6 @@
 #include <ipc/protocol.h>
 #include <logging.h>
 #include <tinyformat.h>
-#include <util/memory.h>
 #include <util/system.h>
 
 #include <functional>
@@ -75,6 +74,6 @@ public:
 namespace interfaces {
 std::unique_ptr<Ipc> MakeIpc(const char* exe_name, const char* arg0, Init& init)
 {
-    return MakeUnique<ipc::IpcImpl>(exe_name, arg0, init);
+    return std::make_unique<ipc::IpcImpl>(exe_name, arg0, init);
 }
 } // namespace interfaces

@@ -13,7 +13,6 @@
 #include <mp/proxy-io.h>
 #include <mp/proxy-types.h>
 #include <mp/util.h>
-#include <util/memory.h>
 #include <util/threadnames.h>
 
 #include <assert.h>
@@ -86,6 +85,6 @@ public:
 };
 } // namespace
 
-std::unique_ptr<Protocol> MakeCapnpProtocol() { return MakeUnique<CapnpProtocol>(); }
+std::unique_ptr<Protocol> MakeCapnpProtocol() { return std::make_unique<CapnpProtocol>(); }
 } // namespace capnp
 } // namespace ipc

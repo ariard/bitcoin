@@ -21,7 +21,7 @@ public:
     virtual ~Validation() {}
 
     // Check if headers are valid.
-    virtual bool validateHeaders(const BlockHeader& header) = 0;
+    virtual bool validateHeaders(const interfaces::BlockHeader& header) = 0;
 };
 
 struct BlockHeader {
