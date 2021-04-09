@@ -18,7 +18,10 @@ interface Validation $Proxy.wrap("interfaces::Validation") {
 
 struct BlockHeader $Proxy.wrap("interfaces::BlockHeader")
 {
-    blockVersion @0 :Int32 $Proxy.name("block_version");
-    blockTime @1 :UInt64 $Proxy.name("block_time");
-    blockHash @2 :Data $Proxy.name("block_hash");
+    nVersion @0 :Int32 $Proxy.name("nVersion");
+    hashPrevBlock @1 :Data $Proxy.name("hashPrevBlock");
+    hashMerkleRoot @2 :Data $Proxy.name("hashMerkleRoot");
+    nTime @3 :UInt32 $Proxy.name("nTime");
+    nBits @4 :UInt32 $Proxy.name("nBits");
+    nNonce @5 :UInt32 $Proxy.name("nNonce");
 }
