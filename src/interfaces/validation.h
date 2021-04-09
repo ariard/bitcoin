@@ -25,9 +25,12 @@ public:
 };
 
 struct BlockHeader {
-    int block_version;
-    uint64_t block_time;
-    uint256 block_hash;
+    int32_t nVersion;
+    uint256 hashPrevBlock;
+    uint256 hashMerkleRoot;
+    uint32_t nTime;
+    uint32_t nBits;
+    uint32_t nNonce;
 };
 
 } // namespace interfaces

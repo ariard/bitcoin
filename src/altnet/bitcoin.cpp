@@ -5,12 +5,16 @@
 #include <altnet/context.h>
 #include <chainparamsbase.h>
 #include <interfaces/init.h>
+#include <interfaces/validation.h>
 #include <util/strencodings.h>
 #include <util/system.h>
 #include <util/threadnames.h>
 #include <util/translation.h>
+#include <uint256.h>
 
 #include <cstdio>
+
+using interfaces::BlockHeader;
 
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
@@ -39,6 +43,14 @@ int main(int argc, char* argv[])
         LogPrintf("startSpawnedProcess failure\n");
         return exit_status;
     }
+    BlockHeader header;
+    header.nVersion = 1;
+    header.hashPrevBlock.SetNull();
+    header.hashMerkleRoot.SetNull();
+    header.nTime = 1231006505;
+    header.nBits = 2083236893;
+    header.nNonce = 0x1d00ffff;
+    altnet.validation->validateHeaders(header);
 
     LogPrintf("This is Altnet!");
     while (true) {}

@@ -700,8 +700,8 @@ static RPCHelpMan startaltnet()
     if (interfaces::Ipc* ipc = Assert(EnsureNodeContext(request.context).init)->ipc()) {
         LogPrintf("Trying to spawn process.\n");
         auto server = ipc->spawnProcess("bitcoin-altnet");
-        node.altnet = server->makeAltnet(*node.validation);
-        node.init->ipc()->addCleanup(*node.altnet, [server = server.release()] { delete server; });
+        //node.altnet = server->makeAltnet(*node.validation);
+        //node.init->ipc()->addCleanup(*node.altnet, [server = server.release()] { delete server; });
     } else {
         LogPrintf("Failed to get a node context.\n");
         result.pushKV("success", false);

@@ -697,6 +697,7 @@ public:
     explicit ValidationImpl(NodeContext& node) : m_node(node) {}
     bool validateHeaders(const interfaces::BlockHeader& header) override
     {
+        LogPrintf("nVersion {} nBits {}", header.nVersion, header.nBits);
         //BlockValidationState state;
         //m_node.chainman->ProcessNewBlockHeaders(headers, state, Params());
         //if (state.IsValid()) return true;
