@@ -30,4 +30,6 @@ using Package = std::vector<CTransactionRef>;
 
 class PackageValidationState : public ValidationState<PackageValidationResult> {};
 
+bool CheckPackage(const std::vector<CTransactionRef>& txns, PackageValidationState& package_state);
+
 #endif // BITCOIN_POLICY_PACKAGES_H
