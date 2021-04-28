@@ -9,7 +9,9 @@ $Cxx.namespace("ipc::capnp::messages");
 
 using Proxy = import "/mp/proxy.capnp";
 $Proxy.include("interfaces/altnet.h");
-$Proxy.include("ipc/capnp/altnet.capnp.h");
+$Proxy.include("interfaces/validation.h");
+
+using Validation = import "validation.capnp";
 
 interface Altnet $Proxy.wrap("interfaces::Altnet") {
     destroy @0 (context :Proxy.Context) -> ();
