@@ -16,7 +16,6 @@ class Altnet
 public:
     virtual ~Altnet() {}
 
-    //virtual bool starttransport(interfaces::Validation& validation);
 };
 std::unique_ptr<Altnet> MakeAltnet(AltnetContext& altnet, interfaces::Validation& validation);
 }
