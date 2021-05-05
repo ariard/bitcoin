@@ -203,6 +203,7 @@ void BlockAssembler::onlyUnconfirmed(CTxMemPool::setEntries& testSet)
 bool BlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsCost) const
 {
     // TODO: switch to weight-based accounting for packages instead of vsize-based accounting.
+    LogPrintf("Tried new bloc kweight %d vs actual block weight %d\n", nBlockWeight + WITNESS_SCALE_FACTOR * packageSize, nBlockMaxWeight);
     if (nBlockWeight + WITNESS_SCALE_FACTOR * packageSize >= nBlockMaxWeight)
         return false;
     if (nBlockSigOpsCost + packageSigOpsCost >= MAX_BLOCK_SIGOPS_COST)
@@ -236,6 +237,8 @@ void BlockAssembler::AddToBlock(CTxMemPool::txiter iter)
     nFees += iter->GetFee();
     inBlock.insert(iter);
 
+    CFeeRate tx_feerate(iter->GetFee(), iter->GetTxSize());
+    LogPrintf("Adding to block tx %s with feerate %d, new number tx %d new block weight %d\n", iter->GetTx().GetHash().ToString(), tx_feerate.ToString(), nBlockTx, nBlockWeight);
     bool fPrintPriority = gArgs.GetBoolArg("-printpriority", DEFAULT_PRINTPRIORITY);
     if (fPrintPriority) {
         LogPrintf("fee %s txid %s\n",
@@ -375,6 +378,7 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
             packageSigOpsCost = modit->nSigOpCostWithAncestors;
         }
 
+        LogPrintf("Tx %s package fees %d block min feerate %d\n", iter->GetTx().GetHash().ToString(), packageFees, blockMinFeeRate.GetFee(packageSize));
         if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
             // Everything else we might consider has a lower fee rate
             return;
