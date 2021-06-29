@@ -7,8 +7,12 @@
 
 #include <uint256.h>
 
-#include <vector>
+#include <memory>
 #include <stdint.h>
+#include <vector>
+
+
+struct NodeContext;
 
 namespace interfaces {
 
@@ -22,6 +26,8 @@ public:
 
     // Check if headers are valid.
     virtual bool validateHeaders(const interfaces::BlockHeader& header) = 0;
+
+    virtual void helloworld(const std::string& message) = 0;
 };
 
 struct BlockHeader {
@@ -32,6 +38,8 @@ struct BlockHeader {
     uint32_t nBits;
     uint32_t nNonce;
 };
+
+std::unique_ptr<Validation> MakeValidation(NodeContext& node);
 
 } // namespace interfaces
 

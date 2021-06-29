@@ -37,21 +37,13 @@ int main(int argc, char* argv[])
         throw std::runtime_error(strprintf("Could not open debug log file %s", LogInstance().m_file_path.string()));
     }
 
+    LogPrintf("Altnet process started!\n");
+
     AltnetContext altnet;
     StartAltnet(altnet, argc, argv, exit_status);
     if (exit_status) {
         LogPrintf("startSpawnedProcess failure\n");
         return exit_status;
     }
-    BlockHeader header;
-    header.nVersion = 1;
-    header.hashPrevBlock.SetNull();
-    header.hashMerkleRoot.SetNull();
-    header.nTime = 1231006505;
-    header.nBits = 2083236893;
-    header.nNonce = 0x1d00ffff;
-    altnet.validation->validateHeaders(header);
-
-    LogPrintf("This is Altnet!");
-    while (true) {}
+    // This process is going to `Protocol->serve()` until exit.
 }

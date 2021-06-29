@@ -16,6 +16,8 @@ class Altnet
 public:
     virtual ~Altnet() {}
 
+    virtual void sendgenesis() = 0;
+
 };
 std::unique_ptr<Altnet> MakeAltnet(AltnetContext& altnet, interfaces::Validation& validation);
 }

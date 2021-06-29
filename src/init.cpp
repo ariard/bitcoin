@@ -25,6 +25,7 @@
 #include <index/txindex.h>
 #include <interfaces/chain.h>
 #include <interfaces/node.h>
+#include <interfaces/validation.h>
 #include <key.h>
 #include <mapport.h>
 #include <miner.h>
@@ -1423,6 +1424,9 @@ bool AppInitMain(const util::Ref& context, NodeContext& node, interfaces::BlockA
     assert(!node.peerman);
     node.peerman = PeerManager::make(chainparams, *node.connman, node.banman.get(),
                                      *node.scheduler, chainman, *node.mempool, ignores_incoming_txs);
+
+    node.validation = interfaces::MakeValidation(node);
+
     RegisterValidationInterface(node.peerman.get());
 
     // sanitize comments per BIP-0014, format user agent and check total size

@@ -14,6 +14,7 @@ $Proxy.includeTypes("ipc/capnp/common-types.h");
 interface Validation $Proxy.wrap("interfaces::Validation") {
     destroy @0 (context :Proxy.Context) -> ();
     validateHeaders @1 (context :Proxy.Context, header: BlockHeader) -> (result: Bool);
+    helloworld @2 (context :Proxy.Context, message :Text) -> ();
 }
 
 struct BlockHeader $Proxy.wrap("interfaces::BlockHeader")
