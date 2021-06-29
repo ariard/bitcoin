@@ -703,13 +703,28 @@ class ValidationImpl : public Validation
 {
 public:
     explicit ValidationImpl(NodeContext& node) : m_node(node) {}
-    bool validateHeaders(const interfaces::BlockHeader& header) override
+    bool validateHeaders(const interfaces::BlockHeader& from_header) override
     {
-        LogPrintf("nVersion {} nBits {}", header.nVersion, header.nBits);
-        //BlockValidationState state;
-        //m_node.chainman->ProcessNewBlockHeaders(headers, state, Params());
-        //if (state.IsValid()) return true;
+        LogPrintf("nVersion {} nBits {}", from_header.nVersion, from_header.nBits);
+        CBlockHeader header;
+        header.nVersion = from_header.nVersion;
+        header.hashPrevBlock = from_header.hashPrevBlock;
+        header.hashMerkleRoot = from_header.hashMerkleRoot;
+        header.nTime = from_header.nTime;
+        header.nBits = from_header.nBits;
+        header.nNonce = from_header.nNonce;
+
+        std::vector<CBlockHeader> headers;
+        headers.push_back(header);
+
+        BlockValidationState state;
+        m_node.chainman->ProcessNewBlockHeaders(headers, state, Params());
+        if (state.IsValid()) return true;
         return false;
+    }
+    void helloworld(const std::string& message) override
+    {
+        LogPrintf("%s from Validation\n", message);
     }
     NodeContext& m_node;
 };
@@ -720,4 +735,5 @@ public:
 namespace interfaces {
 std::unique_ptr<Node> MakeNode(NodeContext* context) { return std::make_unique<node::NodeImpl>(context); }
 std::unique_ptr<Chain> MakeChain(NodeContext& context) { return std::make_unique<node::ChainImpl>(context); }
+std::unique_ptr<Validation> MakeValidation(NodeContext& context) { return std::make_unique<node::ValidationImpl>(context); }
 } // namespace interfaces

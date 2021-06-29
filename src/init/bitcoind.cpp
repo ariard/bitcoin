@@ -4,7 +4,6 @@
 
 #include <interfaces/init.h>
 #include <node/context.h>
-#include <util/memory.h>
 
 #include <memory>
 
@@ -25,6 +24,6 @@ public:
 namespace interfaces {
 std::unique_ptr<Init> MakeNodeInit(NodeContext& node, int argc, char* argv[], int& exit_status)
 {
-    return MakeUnique<init::BitcoindInit>(node);
+    return std::make_unique<init::BitcoindInit>(node);
 }
 } // namespace interfaces

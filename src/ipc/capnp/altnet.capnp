@@ -15,4 +15,5 @@ using Validation = import "validation.capnp";
 
 interface Altnet $Proxy.wrap("interfaces::Altnet") {
     destroy @0 (context :Proxy.Context) -> ();
+    sendgenesis @1 (context :Proxy.Context) -> ();
 }

@@ -704,12 +704,20 @@ static RPCHelpMan startaltnet()
     if (interfaces::Ipc* ipc = Assert(EnsureNodeContext(request.context).init)->ipc()) {
         LogPrintf("Trying to spawn process.\n");
         auto server = ipc->spawnProcess("bitcoin-altnet");
+        if (!(node.validation)) {
+            LogPrintf("Ooops, no validation interface");
+        }
+        // Returns a reference to the managed object.
         node.altnet = server->makeAltnet(*node.validation);
-        //node.init->ipc()->addCleanup(*node.altnet, [server = server.release()] { delete server; });
+        if (node.altnet) {
+            LogPrintf("Create altnet pointer!\n");
+        }
+        node.init->ipc()->addCleanup(*node.altnet, [server = server.release()] { delete server; });
     } else {
         LogPrintf("Failed to get a node context.\n");
         result.pushKV("success", false);
     }
+    node.altnet->sendgenesis();
     result.pushKV("success", true);
     return result;
 },
