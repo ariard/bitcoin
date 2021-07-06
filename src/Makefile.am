@@ -760,7 +760,7 @@ bitcoin_altnet_SOURCES = altnet/bitcoin.cpp \
 bitcoin_altnet_CPPFLAGS = $(bitcoin_bin_cppflags)
 bitcoin_altnet_CXXFLAGS = $(bitcoin_bin_cxxflags)
 bitcoin_altnet_LDFLAGS = $(bitcoin_bin_ldflags)
-bitcoin_altnet_LDADD = $(bitcoin_bin_ldadd) $(LIBBITCOIN_IPC) $(LIBMULTIPROCESS_LIBS)
+bitcoin_altnet_LDADD = $(LIBBITCOIN_SERVER) $(bitcoin_bin_ldadd) $(LIBBITCOIN_IPC) $(LIBMULTIPROCESS_LIBS)
 endif
 #
 

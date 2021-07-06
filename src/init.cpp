@@ -26,6 +26,7 @@
 #include <index/txindex.h>
 #include <init/common.h>
 #include <interfaces/chain.h>
+#include <interfaces/init.h>
 #include <interfaces/node.h>
 #include <interfaces/validation.h>
 #include <mapport.h>
@@ -1183,7 +1184,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     node.peerman = PeerManager::make(chainparams, *node.connman, *node.addrman, node.banman.get(),
                                      *node.scheduler, chainman, *node.mempool, ignores_incoming_txs);
 
-    node.validation = interfaces::MakeValidation(node);
+    node.validation = node.init->makeValidation(node);
 
     RegisterValidationInterface(node.peerman.get());
 

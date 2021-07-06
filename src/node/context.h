@@ -50,7 +50,8 @@ struct NodeContext {
     std::unique_ptr<BanMan> banman;
     ArgsManager* args{nullptr}; // Currently a raw pointer because the memory is not managed by this struct
     std::unique_ptr<interfaces::Chain> chain;
-    std::unique_ptr<interfaces::Altnet> altnet;
+    //! Reference to altnet client that should be used to control altnet orchester daemon.
+    interfaces::Altnet* altnet{nullptr};
     std::unique_ptr<interfaces::Validation> validation;
     //! List of all chain clients (wallet processes or other client) connected to node.
     std::vector<std::unique_ptr<interfaces::ChainClient>> chain_clients;

@@ -5,15 +5,12 @@
 #ifndef BITCOIN_ALTNET_CONTEXT_H
 #define BITCOIN_ALTNET_CONTEXT_H
 
-namespace interfaces {
-class Validation;
-} // namespace interfaces
+#include <interfaces/validation.h>
 
 struct AltnetContext {
-    interfaces::Validation* validation{nullptr};
-
     AltnetContext();
     ~AltnetContext();
+    interfaces::Validation* validation{nullptr};
 };
 
 #endif // BITCOIN_ALTNET_CONTEXT_H
