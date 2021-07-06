@@ -18,6 +18,8 @@ public:
 
     virtual void sendgenesis() = 0;
 
+    virtual void stop() = 0;
+
 };
 std::unique_ptr<Altnet> MakeAltnet(AltnetContext& altnet, std::unique_ptr<interfaces::Validation>);
 }
