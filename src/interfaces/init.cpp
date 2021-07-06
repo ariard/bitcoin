@@ -25,7 +25,6 @@ public:
     explicit ValidationImpl(NodeContext& node) : m_node(node) {}
     bool validateHeaders(const interfaces::BlockHeader& from_header) override
     {
-        LogPrintf("nVersion {} nBits {}", from_header.nVersion, from_header.nBits);
         CBlockHeader header;
         header.nVersion = from_header.nVersion;
         header.hashPrevBlock = from_header.hashPrevBlock;
@@ -34,17 +33,21 @@ public:
         header.nBits = from_header.nBits;
         header.nNonce = from_header.nNonce;
 
+        //auto ref_header = Params().GenesisBlock().GetBlockHeader();
+        //LogPrintf("header: nVersion %d prev_block %s merkle_root %s nTime %d nBits %x nNonce %x\n", header.nVersion, header.hashPrevBlock.GetHex(), header.hashMerkleRoot.GetHex(), header.nTime, header.nBits, header.nNonce);
+        //LogPrintf("header: nVersion %d prev_block %s merkle_root %s nTime %d nBits %x nNonce %x\n", ref_header.nVersion, ref_header.hashPrevBlock.GetHex(), ref_header.hashMerkleRoot.GetHex(), ref_header.nTime, ref_header.nBits, ref_header.nNonce);
+
         std::vector<CBlockHeader> headers;
         headers.push_back(header);
 
         BlockValidationState state;
-        //m_node.chainman->ProcessNewBlockHeaders(headers, state, Params());
+        m_node.chainman->ProcessNewBlockHeaders(headers, state, Params());
         if (state.IsValid()) return true;
         return false;
     }
     void helloworld(const std::string& message) override
     {
-        LogPrintf("%s from Validation\n", message);
+        LogPrintf("ProxyClient's Validation: %s\n", message);
     }
     NodeContext& m_node;
 };
