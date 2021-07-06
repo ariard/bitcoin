@@ -6,6 +6,7 @@
 #include <interfaces/altnet.h>
 #include <interfaces/validation.h>
 
+#include <uint256.h>
 #include <util/system.h>
 
 namespace interfaces {
@@ -22,20 +23,21 @@ public:
     std::unique_ptr<Validation> m_validation;
 
     void sendgenesis() override {
-        //BlockHeader header;
-        //header.nVersion = 1;
-        //header.hashPrevBlock.SetNull();
-        //header.hashMerkleRoot.SetNull();
-        //header.nTime = 1231006505;
-        //header.nBits = 2083236893;
-        //header.nNonce = 0x1d00ffff;
-        if (!(m_context.validation)) {
-            LogPrintf("Ooops, no validation interface\n");
-        } else {
-            LogPrintf("Sounds there is a validation interface...\n");
-        }
 
-        m_validation->helloworld("HELLO");
+        BlockHeader header;
+        header.nVersion = 1;
+        header.hashPrevBlock.SetNull();
+        header.hashMerkleRoot = uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b");
+        header.nTime = 1296688602;
+        header.nNonce = 2;
+        header.nBits = 0x207fffff;
+
+        //m_validation->helloworld("HELLO");
+        if (m_validation->validateHeaders(header)) {
+            LogPrintf("Valid genesis header!");
+        } else {
+            LogPrintf("Invalid genesis header!");
+        }
     }
 
     void stop() override {
