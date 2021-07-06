@@ -590,7 +590,6 @@ libbitcoin_util_a_SOURCES = \
   interfaces/altnet.cpp \
   interfaces/echo.cpp \
   interfaces/handler.cpp \
-  interfaces/init.cpp \
   logging.cpp \
   random.cpp \
   randomenv.cpp \
@@ -674,7 +673,8 @@ bitcoind_CXXFLAGS = $(bitcoin_bin_cxxflags)
 bitcoind_LDFLAGS = $(bitcoin_bin_ldflags)
 bitcoind_LDADD = $(LIBBITCOIN_SERVER) $(bitcoin_bin_ldadd)
 
-bitcoin_node_SOURCES = $(bitcoin_daemon_sources) init/bitcoin-node.cpp
+bitcoin_node_SOURCES = $(bitcoin_daemon_sources) init/bitcoin-node.cpp \
+  interfaces/init.cpp
 bitcoin_node_CPPFLAGS = $(bitcoin_bin_cppflags)
 bitcoin_node_CXXFLAGS = $(bitcoin_bin_cxxflags)
 bitcoin_node_LDFLAGS = $(bitcoin_bin_ldflags)
@@ -756,7 +756,8 @@ bitcoin_util_LDADD += $(BOOST_LIBS)
 # bitcoin-altnet binary #
 if BUILD_BITCOIN_ALTNET
 bitcoin_altnet_SOURCES = altnet/bitcoin.cpp \
-  init/bitcoin-altnet.cpp
+  init/bitcoin-altnet.cpp \
+  interfaces/init.cpp
 bitcoin_altnet_CPPFLAGS = $(bitcoin_bin_cppflags)
 bitcoin_altnet_CXXFLAGS = $(bitcoin_bin_cxxflags)
 bitcoin_altnet_LDFLAGS = $(bitcoin_bin_ldflags)
