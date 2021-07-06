@@ -4,6 +4,7 @@
 
 #include <altnet/context.h>
 #include <interfaces/altnet.h>
+#include <interfaces/validation.h>
 
 #include <util/system.h>
 
@@ -12,15 +13,13 @@ namespace {
 class AltnetImpl : public Altnet
 {
 public:
-    AltnetImpl(AltnetContext& altnet, Validation& validation) {
+    AltnetImpl(AltnetContext& altnet, std::unique_ptr<Validation> validation) : m_validation(std::move(validation)) {
         LogPrintf("Inside altnet\n");
-        validation.helloworld("MOAR");
         m_context = altnet;
-        m_context.validation = &validation;
-        m_context.validation->helloworld("LESS");
     }
 
     AltnetContext m_context;
+    std::unique_ptr<Validation> m_validation;
 
     void sendgenesis() override {
         //BlockHeader header;
@@ -35,14 +34,14 @@ public:
         } else {
             LogPrintf("Sounds there is a validation interface...\n");
         }
-        //TODO: why it doesn't bind ? who is killed first?
 
+        //TODO: sounds to work?
         // Call ProxyClient's "helloworld"
-        m_context.validation->helloworld("HELLO");
+        m_validation->helloworld("HELLO");
     }
 };
 } // namespace
-std::unique_ptr<Altnet> MakeAltnet(AltnetContext& altnet, Validation& validation) {
-    return std::make_unique<AltnetImpl>(altnet, validation);
+std::unique_ptr<Altnet> MakeAltnet(AltnetContext& altnet, std::unique_ptr<interfaces::Validation> validation) {
+    return std::make_unique<AltnetImpl>(altnet, std::move(validation));
 }
 } // namespace interfaces

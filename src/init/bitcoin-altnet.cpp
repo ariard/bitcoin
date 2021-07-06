@@ -6,6 +6,7 @@
 #include <interfaces/altnet.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
+#include <interfaces/validation.h>
 #include <node/ui_interface.h>
 #include <util/translation.h>
 
@@ -21,12 +22,13 @@ public:
     BitcoinAltnetInit(AltnetContext& altnet, const char* arg0)
         : m_altnet(altnet),
           m_ipc(interfaces::MakeIpc(EXE_NAME, arg0, *this)) {}
-    std::unique_ptr<interfaces::Altnet> makeAltnet(interfaces::Validation& validation) override { return MakeAltnet(m_altnet, validation); }
+    std::unique_ptr<interfaces::Altnet> makeAltnet(std::unique_ptr<interfaces::Validation> validation) override { return MakeAltnet(m_altnet, std::move(validation)); }
     interfaces::Ipc* ipc() override { return m_ipc.get(); }
     AltnetContext& m_altnet;
     std::unique_ptr<interfaces::Ipc> m_ipc;
 };
 } // namespace
+
 } // namespace init
 
 void StartAltnet(AltnetContext& altnet, int argc, char* argv[], int& exit_status)

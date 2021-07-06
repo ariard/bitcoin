@@ -34,7 +34,8 @@ public:
     virtual std::unique_ptr<Chain> makeChain();
     virtual std::unique_ptr<WalletClient> makeWalletClient(Chain& chain);
     virtual std::unique_ptr<Echo> makeEcho();
-    virtual std::unique_ptr<Altnet> makeAltnet(Validation& validation);
+    virtual std::unique_ptr<Altnet> makeAltnet(std::unique_ptr<Validation>);
+    virtual std::unique_ptr<Validation> makeValidation(NodeContext& node);
     virtual Ipc* ipc();
 };
 

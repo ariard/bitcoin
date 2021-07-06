@@ -6,6 +6,7 @@
 #include <interfaces/echo.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
+#include <interfaces/validation.h>
 #include <node/context.h>
 
 #include <memory>
@@ -24,7 +25,7 @@ public:
         m_node.init = this;
     }
     std::unique_ptr<interfaces::Echo> makeEcho() override { return interfaces::MakeEcho(); }
-    std::unique_ptr<interfaces::Altnet> makeAltnet(interfaces::Validation& validation) override { return nullptr; }
+    std::unique_ptr<interfaces::Altnet> makeAltnet(std::unique_ptr<interfaces::Validation>) override { return nullptr; }
     interfaces::Ipc* ipc() override { return m_ipc.get(); }
     NodeContext& m_node;
     std::unique_ptr<interfaces::Ipc> m_ipc;

@@ -19,7 +19,7 @@ public:
     virtual void sendgenesis() = 0;
 
 };
-std::unique_ptr<Altnet> MakeAltnet(AltnetContext& altnet, interfaces::Validation& validation);
+std::unique_ptr<Altnet> MakeAltnet(AltnetContext& altnet, std::unique_ptr<interfaces::Validation>);
 }
 
 #endif // BITCOIN_INTERFACES_ALTNET_H
