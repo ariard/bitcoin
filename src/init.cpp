@@ -23,6 +23,7 @@
 #include <httpserver.h>
 #include <index/blockfilterindex.h>
 #include <index/txindex.h>
+#include <interfaces/altnet.h>
 #include <interfaces/chain.h>
 #include <interfaces/init.h>
 #include <interfaces/node.h>
@@ -287,6 +288,10 @@ void Shutdown(NodeContext& node)
         g_zmq_notification_interface = nullptr;
     }
 #endif
+
+    node.altnet->stop();
+    node.altnet.reset();
+    node.init = nullptr;
 
     node.chain_clients.clear();
     UnregisterAllValidationInterfaces();

@@ -35,9 +35,12 @@ public:
             LogPrintf("Sounds there is a validation interface...\n");
         }
 
-        //TODO: sounds to work?
-        // Call ProxyClient's "helloworld"
         m_validation->helloworld("HELLO");
+    }
+
+    void stop() override {
+        LogPrintf("Shutdown of altnet...");
+        exit(0);
     }
 };
 } // namespace
