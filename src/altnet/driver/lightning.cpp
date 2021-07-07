@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 
     SetupEnvironment();
 
-    SelectBaseParams(CBaseChainParams::REGTEST);
+    SelectBaseParams(CBaseChainParams::MAIN);
 
     LogInstance().m_print_to_file = true;
     LogInstance().m_file_path = "debug-altnet-lightning.log";

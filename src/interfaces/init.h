@@ -13,6 +13,7 @@ struct NodeContext;
 namespace interfaces {
 class Altnet;
 class Chain;
+class Driver;
 class Echo;
 class Ipc;
 class Node;
@@ -36,6 +37,7 @@ public:
     virtual std::unique_ptr<Echo> makeEcho();
     virtual std::unique_ptr<Altnet> makeAltnet(std::unique_ptr<Validation>);
     virtual std::unique_ptr<Validation> makeValidation(NodeContext& node);
+    virtual std::unique_ptr<Driver> makeDriver();
     virtual Ipc* ipc();
 };
 

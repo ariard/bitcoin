@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <interfaces/driver.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
 #include <util/translation.h>
@@ -17,6 +18,7 @@ class AltnetLightningInit : public interfaces::Init
 public:
     AltnetLightningInit(const char* arg0)
         : m_ipc(interfaces::MakeIpc(EXE_NAME, arg0, *this)) {}
+    std::unique_ptr<interfaces::Driver> makeDriver() override { return interfaces::MakeDriver(); }
     interfaces::Ipc* ipc() override { return m_ipc.get(); }
     std::unique_ptr<interfaces::Ipc> m_ipc;
 };

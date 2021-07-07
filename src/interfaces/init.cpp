@@ -4,6 +4,7 @@
 
 #include <interfaces/altnet.h>
 #include <interfaces/chain.h>
+#include <interfaces/driver.h>
 #include <interfaces/echo.h>
 #include <interfaces/init.h>
 #include <interfaces/node.h>
@@ -58,5 +59,6 @@ std::unique_ptr<WalletClient> Init::makeWalletClient(Chain& chain) { return {}; 
 std::unique_ptr<Echo> Init::makeEcho() { return {}; }
 std::unique_ptr<Altnet> Init::makeAltnet(std::unique_ptr<Validation>) { return {}; }
 std::unique_ptr<Validation> Init::makeValidation(NodeContext& node) { return std::make_unique<ValidationImpl>(node); }
+std::unique_ptr<Driver> Init::makeDriver() { return {}; }
 Ipc* Init::ipc() { return nullptr; }
 } // namespace interfaces
