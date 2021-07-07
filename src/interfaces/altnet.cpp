@@ -40,6 +40,11 @@ public:
         }
     }
 
+    void startdriver(const std::string& driver_name) override {
+        LogPrintf("starting %s\n", driver_name);
+        //TODO Init access + send Validation
+    }
+
     void stop() override {
         LogPrintf("Shutdown of altnet...");
         exit(0);
