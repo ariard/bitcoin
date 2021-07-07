@@ -7,10 +7,15 @@
 
 #include <interfaces/validation.h>
 
+namespace interfaces {
+class Init;
+} // namespace interfaces
+
 struct AltnetContext {
     AltnetContext();
     ~AltnetContext();
     interfaces::Validation* validation{nullptr};
+    interfaces::Init* init{nullptr};
 };
 
 #endif // BITCOIN_ALTNET_CONTEXT_H
