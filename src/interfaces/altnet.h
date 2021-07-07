@@ -18,6 +18,8 @@ public:
 
     virtual void sendgenesis() = 0;
 
+    virtual void startdriver(const std::string& driver_name) = 0;
+
     virtual void stop() = 0;
 
 };
