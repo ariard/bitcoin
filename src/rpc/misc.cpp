@@ -717,6 +717,32 @@ static RPCHelpMan startaltnet()
     };
 }
 
+static RPCHelpMan startdriver()
+{
+    return RPCHelpMan{
+        "startdriver",
+        "Start a altnet drive instance.\n",
+        {{"driver", RPCArg::Type::STR, RPCArg::Optional::NO, "The driver to launch",}},
+        RPCResult{RPCResult::Type::BOOL, "success", "If the driver daemon has been successfully start"},
+        RPCExamples{""},
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+{
+    if (request.params[0].isNull()) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Paramater 'driver' cannot be empty");
+    }
+
+    NodeContext& node = EnsureNodeContext(request.context);
+    if (!node.altnet) {
+        throw JSONRPCError(RPC_MISC_ERROR, "Process `bitcoin-altnet` must be started first");
+    }
+
+    auto driver = request.params[0].get_str();
+    node.altnet->startdriver(driver);
+    return true;
+},
+    };
+}
+
 static UniValue SummaryToJSON(const IndexSummary&& summary, std::string index_name)
 {
     UniValue ret_summary(UniValue::VOBJ);
@@ -798,6 +824,7 @@ static const CRPCCommand commands[] =
     { "hidden",             &echojson,                },
     { "hidden",             &echoipc,                 },
     { "hidden",             &startaltnet,             },
+    { "hidden",             &startdriver,             },
 };
 // clang-format on
     for (const auto& c : commands) {
