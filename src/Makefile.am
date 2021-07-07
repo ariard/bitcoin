@@ -164,6 +164,7 @@ BITCOIN_CORE_H = \
   init.h \
   interfaces/altnet.h \
   interfaces/chain.h \
+  interfaces/driver.h \
   interfaces/echo.h \
   interfaces/handler.h \
   interfaces/init.h \
@@ -571,6 +572,7 @@ libbitcoin_util_a_SOURCES = \
   compat/strnlen.cpp \
   fs.cpp \
   interfaces/altnet.cpp \
+  interfaces/driver.cpp \
   interfaces/echo.cpp \
   interfaces/handler.cpp \
   logging.cpp \
@@ -846,6 +848,7 @@ endif
 
 libbitcoin_ipc_mpgen_input = \
   ipc/capnp/altnet.capnp \
+  ipc/capnp/driver.capnp \
   ipc/capnp/echo.capnp \
   ipc/capnp/init.capnp \
   ipc/capnp/validation.capnp

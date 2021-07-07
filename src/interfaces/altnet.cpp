@@ -4,6 +4,7 @@
 
 #include <altnet/context.h>
 #include <interfaces/altnet.h>
+#include <interfaces/driver.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
 #include <interfaces/validation.h>
@@ -45,7 +46,10 @@ public:
     void startdriver(const std::string& driver_name) override {
         LogPrintf("starting %s\n", driver_name);
         auto server = m_context.init->ipc()->spawnProcess(driver_name.data());
-        //TODO add Driver interface
+        auto driver = server->makeDriver();
+        m_context.init->ipc()->addCleanup(*driver, [server = server.release()] { delete server; });
+        driver.reset();
+        server.reset();
     }
 
     void stop() override {
