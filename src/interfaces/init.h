@@ -57,4 +57,7 @@ std::unique_ptr<Init> MakeGuiInit(int argc, char* argv[]);
 //! Return implementation of Init interface for the altnet process.
 void StartAltnet(AltnetContext& altnet, int argc, char* argv[], int& exit_status);
 
+//! Reutnr implementation of Init interface for the `altnet-lightning` process.
+void StartAltnetLightning(int argc, char* argv[], int& exit_status);
+
 #endif // BITCOIN_INTERFACES_INIT_H
