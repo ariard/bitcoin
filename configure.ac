@@ -30,6 +30,7 @@ BITCOIN_MP_NODE_NAME=bitcoin-node
 BITCOIN_MP_GUI_NAME=bitcoin-gui
 dnl Altnet
 BITCOIN_ALTNET_NAME=bitcoin-altnet
+ALTNET_LIGHTNING_NAME=altnet-lightning
 
 dnl Unless the user specified ARFLAGS, force it to be cr
 AC_ARG_VAR(ARFLAGS, [Flags for the archiver, defaults to <cr> if not set])
@@ -1827,6 +1828,7 @@ AC_SUBST(BITCOIN_WALLET_TOOL_NAME)
 AC_SUBST(BITCOIN_MP_NODE_NAME)
 AC_SUBST(BITCOIN_MP_GUI_NAME)
 AC_SUBST(BITCOIN_ALTNET_NAME)
+AC_SUBST(ALTNET_LIGHTNING_NAME)
 
 AC_SUBST(RELDFLAGS)
 AC_SUBST(DEBUG_CPPFLAGS)

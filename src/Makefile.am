@@ -114,6 +114,7 @@ endif
 
 if BUILD_BITCOIN_ALTNET
   bin_PROGRAMS += bitcoin-altnet
+  bin_PROGRAMS += altnet-lightning
 endif
 
 .PHONY: FORCE check-symbols check-security
@@ -762,6 +763,15 @@ bitcoin_altnet_CPPFLAGS = $(bitcoin_bin_cppflags)
 bitcoin_altnet_CXXFLAGS = $(bitcoin_bin_cxxflags)
 bitcoin_altnet_LDFLAGS = $(bitcoin_bin_ldflags)
 bitcoin_altnet_LDADD = $(LIBBITCOIN_SERVER) $(bitcoin_bin_ldadd) $(LIBBITCOIN_IPC) $(LIBMULTIPROCESS_LIBS)
+
+# altnet-lightning binary #
+altnet_lightning_SOURCES = altnet/driver/lightning.cpp \
+  init/altnet-lightning.cpp \
+  interfaces/init.cpp
+altnet_lightning_CPPFLAGS = $(bitcoin_bin_cppflags)
+altnet_lightning_CXXFLAGS = $(bitcoin_bin_cxxflags)
+altnet_lightning_LDFLAGS = $(bitcoin_bin_ldflags)
+altnet_lightning_LDADD = $(LIBBITCOIN_SERVER) $(bitcoin_bin_ldadd) $(LIBBITCOIN_IPC) $(LIBMULTIPROCESS_LIBS)
 endif
 #
 
