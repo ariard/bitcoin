@@ -24,7 +24,7 @@ public:
           m_ipc(interfaces::MakeIpc(EXE_NAME, arg0, *this)) {
         m_altnet.init = this;
     }
-    std::unique_ptr<interfaces::Altnet> makeAltnet(std::unique_ptr<interfaces::Validation> validation) override { return MakeAltnet(m_altnet, std::move(validation)); }
+    std::unique_ptr<interfaces::Altnet> makeAltnet(std::unique_ptr<interfaces::Validation> validation) override { return MakeAltnet(&m_altnet, std::move(validation)); }
     interfaces::Ipc* ipc() override { return m_ipc.get(); }
     AltnetContext& m_altnet;
     std::unique_ptr<interfaces::Ipc> m_ipc;

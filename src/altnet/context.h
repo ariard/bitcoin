@@ -5,17 +5,22 @@
 #ifndef BITCOIN_ALTNET_CONTEXT_H
 #define BITCOIN_ALTNET_CONTEXT_H
 
-#include <interfaces/validation.h>
+#include <memory>
+#include <vector>
 
 namespace interfaces {
+class Driver;
 class Init;
+class Validation;
 } // namespace interfaces
 
 struct AltnetContext {
+    interfaces::Init* init{nullptr};
+    std::vector<std::unique_ptr<interfaces::Driver>> driver_clients;
+    std::unique_ptr<interfaces::Validation> validation;
+
     AltnetContext();
     ~AltnetContext();
-    interfaces::Validation* validation{nullptr};
-    interfaces::Init* init{nullptr};
 };
 
 #endif // BITCOIN_ALTNET_CONTEXT_H
