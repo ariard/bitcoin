@@ -28,7 +28,9 @@ public:
     {
         return MakeWalletClient(chain, *Assert(m_node.args));
     }
-    std::unique_ptr<interfaces::Echo> makeEcho() override { return interfaces::MakeEcho(); }
+    std::unique_ptr<interfaces::Echo> makeEcho() override {
+        throw std::logic_error("Echo function called in a non-echoing configuration");
+    }
     NodeContext& m_node;
 };
 } // namespace
