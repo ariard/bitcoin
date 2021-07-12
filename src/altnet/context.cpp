@@ -4,5 +4,8 @@
 
 #include <altnet/context.h>
 
+#include <interfaces/driver.h>
+#include <interfaces/validation.h>
+
 AltnetContext::AltnetContext() {}
 AltnetContext::~AltnetContext() {}

@@ -23,7 +23,7 @@ public:
     virtual void stop() = 0;
 
 };
-std::unique_ptr<Altnet> MakeAltnet(AltnetContext& altnet, std::unique_ptr<interfaces::Validation>);
+std::unique_ptr<Altnet> MakeAltnet(AltnetContext* altnet, std::unique_ptr<interfaces::Validation>);
 }
 
 #endif // BITCOIN_INTERFACES_ALTNET_H
