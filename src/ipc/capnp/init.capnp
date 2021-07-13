@@ -13,16 +13,18 @@ $Proxy.include("interfaces/echo.h");
 $Proxy.include("interfaces/init.h");
 $Proxy.include("interfaces/validation.h");
 $Proxy.include("interfaces/driver.h");
+$Proxy.include ("interfaces/netwire.h");
 $Proxy.includeTypes("ipc/capnp/init-types.h");
 
 using Echo = import "echo.capnp";
 using Altnet = import "altnet.capnp";
 using Validation = import "validation.capnp";
 using Driver = import "driver.capnp";
+using Netwire = import "netwire.capnp";
 
 interface Init $Proxy.wrap("interfaces::Init") {
     construct @0 (threadMap: Proxy.ThreadMap) -> (threadMap :Proxy.ThreadMap);
     makeEcho @1 (context :Proxy.Context) -> (result :Echo.Echo);
     makeAltnet @2(context: Proxy.Context, validation :Validation.Validation) -> (result :Altnet.Altnet);
-    makeDriver @3 (context :Proxy.Context) -> (result :Driver.Driver);
+    makeDriver @3 (context :Proxy.Context, netwire :Netwire.Netwire) -> (result :Driver.Driver);
 }

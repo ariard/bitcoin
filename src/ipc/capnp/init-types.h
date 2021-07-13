@@ -9,5 +9,6 @@
 #include <ipc/capnp/echo.capnp.proxy-types.h>
 #include <ipc/capnp/validation.capnp.proxy-types.h>
 #include <ipc/capnp/driver.capnp.proxy-types.h>
+#include <ipc/capnp/netwire.capnp.proxy-types.h>
 
 #endif // BITCOIN_IPC_CAPNP_INIT_TYPES_H

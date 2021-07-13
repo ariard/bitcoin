@@ -5,6 +5,7 @@
 #include <interfaces/driver.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
+#include <interfaces/netwire.h>
 #include <util/translation.h>
 
 #include <memory>
@@ -18,7 +19,7 @@ class AltnetLightningInit : public interfaces::Init
 public:
     AltnetLightningInit(const char* arg0)
         : m_ipc(interfaces::MakeIpc(EXE_NAME, arg0, *this)) {}
-    std::unique_ptr<interfaces::Driver> makeDriver() override { return interfaces::MakeDriver(); }
+    std::unique_ptr<interfaces::Driver> makeDriver(std::unique_ptr<interfaces::Netwire> netwire) override { return interfaces::MakeDriver(std::move(netwire)); }
     interfaces::Ipc* ipc() override { return m_ipc.get(); }
     std::unique_ptr<interfaces::Ipc> m_ipc;
 };

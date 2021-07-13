@@ -5,6 +5,9 @@
 #ifndef BITCOIN_INTERFACES_DRIVER_H
 #define BITCOIN_INTERFACES_DRIVER_H
 
+#include <interfaces/netwire.h>
+#include <interfaces/validation.h>
+
 #include <memory>
 
 namespace interfaces {
@@ -14,11 +17,9 @@ class Driver
 {
 public:
     virtual ~Driver() {}
-
-    virtual void stop() = 0;
 };
 
-std::unique_ptr<Driver> MakeDriver();
+std::unique_ptr<Driver> MakeDriver(std::unique_ptr<interfaces::Netwire> netwire);
 
 } // namespace interfaces
 

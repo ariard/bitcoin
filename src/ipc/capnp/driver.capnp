@@ -12,5 +12,4 @@ $Proxy.include("interfaces/driver.h");
 
 interface Driver $Proxy.wrap("interfaces::Driver") {
     destroy @0 (context :Proxy.Context) -> ();
-    stop @1 (context :Proxy.Context) -> ();
 }

@@ -174,6 +174,7 @@ BITCOIN_CORE_H = \
   interfaces/handler.h \
   interfaces/init.h \
   interfaces/ipc.h \
+  interfaces/netwire.h \
   interfaces/node.h \
   interfaces/validation.h \
   interfaces/wallet.h \
@@ -591,6 +592,7 @@ libbitcoin_util_a_SOURCES = \
   fs.cpp \
   interfaces/altnet.cpp \
   interfaces/driver.cpp \
+  interfaces/netwire.cpp\
   interfaces/echo.cpp \
   interfaces/handler.cpp \
   logging.cpp \
@@ -903,6 +905,7 @@ libbitcoin_ipc_mpgen_input = \
   ipc/capnp/altnet.capnp \
   ipc/capnp/driver.capnp \
   ipc/capnp/echo.capnp \
+  ipc/capnp/netwire.capnp \
   ipc/capnp/init.capnp \
   ipc/capnp/validation.capnp
 EXTRA_DIST += $(libbitcoin_ipc_mpgen_input)

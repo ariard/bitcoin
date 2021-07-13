@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include <vector>
 
-
 struct NodeContext;
 
 namespace interfaces {
