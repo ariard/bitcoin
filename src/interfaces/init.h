@@ -8,6 +8,7 @@
 #include <memory>
 
 struct AltnetContext;
+struct LightningContext;
 struct NodeContext;
 
 namespace interfaces {
@@ -62,6 +63,6 @@ std::unique_ptr<Init> MakeGuiInit(int argc, char* argv[]);
 void StartAltnet(AltnetContext& altnet, int argc, char* argv[], int& exit_status);
 
 //! Reutnr implementation of Init interface for the `altnet-lightning` process.
-void StartAltnetLightning(int argc, char* argv[], int& exit_status);
+void StartAltnetLightning(LightningContext& ln, int argc, char* argv[], int& exit_status);
 
 #endif // BITCOIN_INTERFACES_INIT_H

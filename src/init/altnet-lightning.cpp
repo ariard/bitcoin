@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <altnet/driver/context.h>
 #include <interfaces/driver.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
@@ -17,19 +18,21 @@ const char* EXE_NAME = "altnet-lightning";
 class AltnetLightningInit : public interfaces::Init
 {
 public:
-    AltnetLightningInit(const char* arg0)
-        : m_ipc(interfaces::MakeIpc(EXE_NAME, arg0, *this)) {}
-    std::unique_ptr<interfaces::Driver> makeDriver(std::unique_ptr<interfaces::Netwire> netwire) override { return interfaces::MakeDriver(std::move(netwire)); }
+    AltnetLightningInit(LightningContext& ln, const char* arg0)
+        :   m_ln(ln),
+            m_ipc(interfaces::MakeIpc(EXE_NAME, arg0, *this)) {}
+    std::unique_ptr<interfaces::Driver> makeDriver(std::unique_ptr<interfaces::Netwire> netwire) override { return interfaces::MakeDriver(m_ln, std::move(netwire)); }
     interfaces::Ipc* ipc() override { return m_ipc.get(); }
+    LightningContext& m_ln;
     std::unique_ptr<interfaces::Ipc> m_ipc;
 };
 } // namespace
 
 } // namespace init
 
-void StartAltnetLightning(int argc, char *argv[], int& exit_status)
+void StartAltnetLightning(LightningContext& ln, int argc, char *argv[], int& exit_status)
 {
-    auto init = std::make_unique<init::AltnetLightningInit>(argc > 0 ? argv[0] : "");
+    auto init = std::make_unique<init::AltnetLightningInit>(ln, argc > 0 ? argv[0] : "");
     if (!init->m_ipc->startSpawnedProcess(argc, argv, exit_status)) {
         exit_status = 1;
     }

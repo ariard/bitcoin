@@ -5,6 +5,7 @@
 #ifndef BITCOIN_INTERFACES_DRIVER_H
 #define BITCOIN_INTERFACES_DRIVER_H
 
+#include <altnet/driver/context.h>
 #include <interfaces/netwire.h>
 #include <interfaces/validation.h>
 
@@ -19,7 +20,7 @@ public:
     virtual ~Driver() {}
 };
 
-std::unique_ptr<Driver> MakeDriver(std::unique_ptr<interfaces::Netwire> netwire);
+std::unique_ptr<Driver> MakeDriver(LightningContext& ln, std::unique_ptr<interfaces::Netwire> netwire);
 
 } // namespace interfaces
 
