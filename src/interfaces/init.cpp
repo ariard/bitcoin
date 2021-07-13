@@ -7,6 +7,7 @@
 #include <interfaces/driver.h>
 #include <interfaces/echo.h>
 #include <interfaces/init.h>
+#include <interfaces/netwire.h>
 #include <interfaces/node.h>
 #include <interfaces/validation.h>
 #include <interfaces/wallet.h>
@@ -19,6 +20,18 @@
 #include <validation.h>
 
 namespace interfaces {
+
+class NetwireImpl : public Netwire
+{
+public:
+    explicit NetwireImpl(AltnetContext& altnet) : m_altnet(altnet) {}
+
+    void sendHeaders(const interfaces::BlockHeader& header) override {
+        LogPrintf("inside sendHeaders\n");
+        m_altnet.validation->validateHeaders(header);
+    }
+    AltnetContext& m_altnet;
+};
 
 class ValidationImpl : public Validation
 {
@@ -59,6 +72,7 @@ std::unique_ptr<WalletClient> Init::makeWalletClient(Chain& chain) { return {}; 
 std::unique_ptr<Echo> Init::makeEcho() { return {}; }
 std::unique_ptr<Altnet> Init::makeAltnet(std::unique_ptr<Validation>) { return {}; }
 std::unique_ptr<Validation> Init::makeValidation(NodeContext& node) { return std::make_unique<ValidationImpl>(node); }
-std::unique_ptr<Driver> Init::makeDriver() { return {}; }
+std::unique_ptr<Netwire> Init::makeNetwire(AltnetContext& altnet) { return std::make_unique<NetwireImpl>(altnet); }
+std::unique_ptr<Driver> Init::makeDriver(std::unique_ptr<Netwire>) { return {}; }
 Ipc* Init::ipc() { return nullptr; }
 } // namespace interfaces

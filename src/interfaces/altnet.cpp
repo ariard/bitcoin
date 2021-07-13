@@ -7,6 +7,7 @@
 #include <interfaces/driver.h>
 #include <interfaces/init.h>
 #include <interfaces/ipc.h>
+#include <interfaces/netwire.h>
 #include <interfaces/validation.h>
 
 #include <uint256.h>
@@ -17,14 +18,13 @@ namespace {
 class AltnetImpl : public Altnet
 {
 public:
-    AltnetImpl(AltnetContext* altnet, std::unique_ptr<Validation> validation) {
+    AltnetImpl(AltnetContext& altnet, std::unique_ptr<Validation> validation): m_context(altnet) {
         LogPrintf("Inside altnet\n");
         //m_context = altnet;
-        m_context = altnet;
-        m_context->validation = std::move(validation);
+        m_context.validation = std::move(validation);
     }
 
-    AltnetContext* m_context{nullptr};
+    AltnetContext& m_context;
 
     void sendgenesis() override {
 
@@ -37,7 +37,7 @@ public:
         header.nBits = 0x207fffff;
 
         //m_validation->helloworld("HELLO");
-        if (m_context->validation->validateHeaders(header)) {
+        if (m_context.validation->validateHeaders(header)) {
             LogPrintf("Valid genesis header!");
         } else {
             LogPrintf("Invalid genesis header!");
@@ -46,10 +46,10 @@ public:
 
     void startdriver(const std::string& driver_name) override {
         LogPrintf("starting %s\n", driver_name);
-        auto server = m_context->init->ipc()->spawnProcess(driver_name.data());
-        auto driver = server->makeDriver();
-        m_context->init->ipc()->addCleanup(*driver, [server = server.release()] { delete server; });
-        m_context->driver_clients.emplace_back(std::move(driver));
+        auto server = m_context.init->ipc()->spawnProcess(driver_name.data());
+        auto driver = server->makeDriver(m_context.init->makeNetwire(m_context));
+        m_context.init->ipc()->addCleanup(*driver, [server = server.release()] { delete server; });
+        m_context.driver_clients.emplace_back(std::move(driver));
     }
 
     void stop() override {
@@ -58,7 +58,7 @@ public:
     }
 };
 } // namespace
-std::unique_ptr<Altnet> MakeAltnet(AltnetContext* context, std::unique_ptr<interfaces::Validation> validation) {
+std::unique_ptr<Altnet> MakeAltnet(AltnetContext& context, std::unique_ptr<interfaces::Validation> validation) {
     return std::make_unique<AltnetImpl>(context, std::move(validation));
 }
 } // namespace interfaces

@@ -16,6 +16,7 @@ class Chain;
 class Driver;
 class Echo;
 class Ipc;
+class Netwire;
 class Node;
 class Validation;
 class WalletClient;
@@ -37,7 +38,8 @@ public:
     virtual std::unique_ptr<Echo> makeEcho();
     virtual std::unique_ptr<Altnet> makeAltnet(std::unique_ptr<Validation>);
     virtual std::unique_ptr<Validation> makeValidation(NodeContext& node);
-    virtual std::unique_ptr<Driver> makeDriver();
+    virtual std::unique_ptr<Netwire> makeNetwire(AltnetContext& altnet);
+    virtual std::unique_ptr<Driver> makeDriver(std::unique_ptr<Netwire>);
     virtual Ipc* ipc();
 };
 
