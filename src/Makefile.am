@@ -123,6 +123,7 @@ BITCOIN_CORE_H = \
   addrdb.h \
   addrman.h \
   altnet/context.h \
+  alnet/driver/context.h \
   attributes.h \
   banman.h \
   base58.h \
@@ -584,6 +585,7 @@ libbitcoin_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_util_a_SOURCES = \
   altnet/context.cpp \
+  altnet/driver/context.cpp \
   support/lockedpool.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \

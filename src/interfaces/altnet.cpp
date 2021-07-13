@@ -14,6 +14,7 @@
 #include <util/system.h>
 
 namespace interfaces {
+
 namespace {
 class AltnetImpl : public Altnet
 {
