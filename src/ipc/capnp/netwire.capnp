@@ -18,4 +18,5 @@ using Validation = import "validation.capnp";
 interface Netwire $Proxy.wrap("interfaces::Netwire") {
     destroy @0 (context :Proxy.Context) -> ();
     sendHeaders @1 (context :Proxy.Context, header: Validation.BlockHeader) -> ();
+    recvHeaders @2 (context :Proxy.Context) -> (result: List(Validation.BlockHeader));
 }

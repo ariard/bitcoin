@@ -124,6 +124,7 @@ BITCOIN_CORE_H = \
   addrman.h \
   altnet/context.h \
   alnet/driver/context.h \
+  altnet/driver/lightning.h \
   attributes.h \
   banman.h \
   base58.h \
