@@ -5,6 +5,7 @@
 #ifndef BITCOIN_INTERFACES_VALIDATION_H
 #define BITCOIN_INTERFACES_VALIDATION_H
 
+#include <serialize.h>
 #include <uint256.h>
 
 #include <memory>
