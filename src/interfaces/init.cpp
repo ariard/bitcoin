@@ -30,6 +30,13 @@ public:
         LogPrintf("inside sendHeaders\n");
         m_altnet.validation->validateHeaders(header);
     }
+
+    std::vector<interfaces::BlockHeader> recvHeaders() override {
+        std::vector<interfaces::BlockHeader> headers;
+        //TODO: m_altnet.validation->recvHeaders(headers);
+        return headers;
+    }
+
     AltnetContext& m_altnet;
 };
 

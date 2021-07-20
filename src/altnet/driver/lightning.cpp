@@ -3,26 +3,36 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <altnet/driver/context.h>
+#include <altnet/driver/lightning.h>
 #include <chainparamsbase.h>
 #include <interfaces/init.h>
 #include <interfaces/netwire.h>
 #include <interfaces/validation.h>
+#include <streams.h>
+#include <threadinterrupt.h>
 #include <util/strencodings.h>
 #include <util/system.h>
 #include <util/threadnames.h>
 #include <util/translation.h>
 
+
+#include <arpa/inet.h>
 #include <chrono>
 #include <functional>
 #include <cstdio>
 #include <memory>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <thread>
 
 using interfaces::BlockHeader;
 
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
-void ThreadLightningHandler(LightningContext& ln) {
+CLightningConnection::CLightningConnection() { }
+CLightningConnection::~CLightningConnection() { }
+
+void CLightningConnection::ThreadValidationHandler(LightningContext& ln) {
 
     BlockHeader header;
     header.nVersion = 1;
@@ -34,11 +44,32 @@ void ThreadLightningHandler(LightningContext& ln) {
 
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
+
         if (ln.netwire) {
-            ln.netwire->sendHeaders(header);
+
+            // Fetch validation engine and feed LN node
+            std::vector<BlockHeader> recv_headers = ln.netwire->recvHeaders();
+            if (recv_headers.size() > 0) {
+                LOCK(cs_vSendMsg);
+                auto it(vRecvMsg.begin());
+                for (auto &it : recv_headers) {
+                    vSendMsg.push_back(it);
+                }
+            }
+
+            // Fetch LN node and feed validation engine.
+            {
+                LOCK(cs_vRecvMsg);
+                if (vRecvMsg.size() > 0) {
+                    for (auto &it : vRecvMsg) {
+                        ln.netwire->sendHeaders(it);
+                    }
+                }
+            }
         }
     }
 }
+
 
 int main(int argc, char* argv[])
 {
@@ -62,7 +93,8 @@ int main(int argc, char* argv[])
     LogPrintf("`altnet-lightning` process started!\n");
 
     LightningContext ln;
-    auto threadLightningHandler = std::thread(&TraceThread<std::function<void()> >, "ln", std::function<void()>(std::bind(&ThreadLightningHandler, std::ref(ln))));
+    CLightningConnection connection;
+    auto threadValidationHandler = std::thread(&TraceThread<std::function<void()> >, "ln-validation", std::function<void()>(std::bind(&CLightningConnection::ThreadValidationHandler, std::ref(connection), std::ref(ln))));
 
     StartAltnetLightning(ln, argc, argv, exit_status);
     if (exit_status) {

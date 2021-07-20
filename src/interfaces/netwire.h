@@ -19,6 +19,8 @@ public:
 
     // Check if headers are valid.
     virtual void sendHeaders(const interfaces::BlockHeader& header) = 0;
+
+    virtual std::vector<interfaces::BlockHeader> recvHeaders() = 0;
 };
 
 std::unique_ptr<Netwire> MakeNetwire(AltnetContext& altnet);
