@@ -3392,6 +3392,36 @@ bool ChainstateManager::ProcessNewBlockHeaders(const std::vector<CBlockHeader>& 
     return true;
 }
 
+std::vector<CBlockHeader> ChainstateManager::FetchNewBlockHeaders(const CBlockHeader& header)
+{
+    std::vector<CBlockHeader> headers;
+    {
+        LOCK(cs_main);
+        BlockMap::iterator sync_header = m_blockman.m_block_index.find(header.GetHash());
+        if (sync_header == m_blockman.m_block_index.end()) {
+            return headers;
+        }
+        CBlockIndex* sync = sync_header->second;
+        if (!sync) {
+            return headers;
+        }
+        CBlockIndex* prev = pindexBestHeader;
+        while (prev->GetBlockHash() != sync->GetBlockHash()) {
+            auto it = headers.begin();
+            headers.insert(it, prev->GetBlockHeader());
+            BlockMap::iterator prev_header = m_blockman.m_block_index.find(*prev->phashBlock);
+            if (prev_header == m_blockman.m_block_index.end()) {
+                break;
+            }
+            CBlockIndex* prev = prev_header->second;
+            if (!prev) {
+                break;
+            }
+        }
+    }
+    return headers;
+}
+
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
 bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, BlockValidationState& state, CBlockIndex** ppindex, bool fRequested, const FlatFilePos* dbp, bool* fNewBlock)
 {

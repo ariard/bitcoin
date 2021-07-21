@@ -32,9 +32,8 @@ public:
     }
 
     std::vector<interfaces::BlockHeader> recvHeaders() override {
-        std::vector<interfaces::BlockHeader> headers;
-        //TODO: m_altnet.validation->recvHeaders(headers);
-        return headers;
+        LogPrintf("inside recvHeaders\n");
+        return m_altnet.validation->recvHeaders();
     }
 
     AltnetContext& m_altnet;
@@ -66,11 +65,40 @@ public:
         if (state.IsValid()) return true;
         return false;
     }
+    std::vector<interfaces::BlockHeader> recvHeaders() override {
+        if (!m_sync_tip) {
+            m_sync_tip = std::make_unique<CBlockHeader>(Params().GenesisBlock().GetBlockHeader());
+        }
+        auto headers = m_node.chainman->FetchNewBlockHeaders(*m_sync_tip);
+
+        std::vector<BlockHeader> recv_headers;
+        auto it = headers.begin();
+        while (it != headers.end()) {
+            CBlockHeader hdr = *it;
+            BlockHeader in_hdr;
+            in_hdr.nVersion = hdr.nVersion;
+            in_hdr.hashPrevBlock = hdr.hashPrevBlock;
+            in_hdr.hashMerkleRoot = hdr.hashMerkleRoot;
+            in_hdr.nTime = hdr.nTime;
+            in_hdr.nBits = hdr.nBits;
+            in_hdr.nNonce = hdr.nNonce;
+
+            recv_headers.push_back(in_hdr);
+
+            // Save last header
+            if (it + 1 == headers.end()) {
+                m_sync_tip = std::make_unique<CBlockHeader>(*it);
+            }
+            it++;
+        }
+        return recv_headers;
+    }
     void helloworld(const std::string& message) override
     {
         LogPrintf("ProxyClient's Validation: %s\n", message);
     }
     NodeContext& m_node;
+    std::unique_ptr<CBlockHeader> m_sync_tip;
 };
 
 std::unique_ptr<Node> Init::makeNode() { return {}; }
