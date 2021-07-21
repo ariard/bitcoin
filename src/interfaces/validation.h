@@ -27,6 +27,8 @@ public:
     // Check if headers are valid.
     virtual bool validateHeaders(const interfaces::BlockHeader& header) = 0;
 
+    virtual std::vector<interfaces::BlockHeader> recvHeaders() = 0;
+
     virtual void helloworld(const std::string& message) = 0;
 };
 
