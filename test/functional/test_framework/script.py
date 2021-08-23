@@ -30,6 +30,7 @@ LOCKTIME_THRESHOLD = 500000000
 ANNEX_TAG = 0x50
 
 LEAF_VERSION_TAPSCRIPT = 0xc0
+TAPROOT_LEAF_WITHPARITY = 0x20
 KEY_VERSION_TAPROOT = 0x00
 KEY_VERSION_ANYPREVOUT = 0x01
 
@@ -243,7 +244,7 @@ OP_CHECKMULTISIGVERIFY = CScriptOp(0xaf)
 OP_NOP1 = CScriptOp(0xb0)
 OP_CHECKLOCKTIMEVERIFY = CScriptOp(0xb1)
 OP_CHECKSEQUENCEVERIFY = CScriptOp(0xb2)
-OP_NOP4 = CScriptOp(0xb3)
+OP_MERKLESUB = CScriptOp(0xb3)
 OP_NOP5 = CScriptOp(0xb4)
 OP_NOP6 = CScriptOp(0xb5)
 OP_NOP7 = CScriptOp(0xb6)
@@ -361,7 +362,7 @@ OPCODE_NAMES.update({
     OP_NOP1: 'OP_NOP1',
     OP_CHECKLOCKTIMEVERIFY: 'OP_CHECKLOCKTIMEVERIFY',
     OP_CHECKSEQUENCEVERIFY: 'OP_CHECKSEQUENCEVERIFY',
-    OP_NOP4: 'OP_NOP4',
+    OP_MERKLESUB: 'OP_MERKLESUB',
     OP_NOP5: 'OP_NOP5',
     OP_NOP6: 'OP_NOP6',
     OP_NOP7: 'OP_NOP7',
@@ -607,8 +608,12 @@ SIGHASH_ANYONECANPAY = 0x80
 SIGHASH_ANYPREVOUT = 0x40
 SIGHASH_ANYPREVOUTANYSCRIPT = 0xc0
 
+SIGHASH_GROUP = 0x8
+SIGHASH_GROUP_ANYPUBKEY = 0x18
+SIGHASH_GROUP_ANYAMOUNT = 0x28
+
 SIGHASH_INMASK = 0xc0
-SIGHASH_OUTMASK = 0x03
+SIGHASH_OUTMASK = 0x3D
 
 def FindAndDelete(script, sig):
     """Consensus critical, see FindAndDelete() in Satoshi codebase"""
@@ -750,7 +755,7 @@ class TestFrameworkScript(unittest.TestCase):
         for value in values:
             self.assertEqual(CScriptNum.decode(CScriptNum.encode(CScriptNum(value))), value)
 
-def TaprootSignatureHash(txTo, spent_utxos, hash_type, input_index = 0, scriptpath = False, script = CScript(), codeseparator_pos = -1, annex = None, leaf_ver = LEAF_VERSION_TAPSCRIPT, key_ver = KEY_VERSION_TAPROOT):
+def TaprootSignatureHash(txTo, spent_utxos, hash_type, input_index = 0, scriptpath = False, script = CScript(), codeseparator_pos = -1, annex = None, leaf_ver = LEAF_VERSION_TAPSCRIPT, key_ver = KEY_VERSION_TAPROOT, group_outputs = None, group_anypubkey = None, group_anyamount = None):
     assert (len(txTo.vin) == len(spent_utxos))
     assert key_ver == KEY_VERSION_TAPROOT or key_ver == KEY_VERSION_ANYPREVOUT
     assert key_ver != KEY_VERSION_ANYPREVOUT or scriptpath
@@ -769,6 +774,20 @@ def TaprootSignatureHash(txTo, spent_utxos, hash_type, input_index = 0, scriptpa
         ss += sha256(b"".join(struct.pack("<I", i.nSequence) for i in txTo.vin))
     if out_type == SIGHASH_ALL:
         ss += sha256(b"".join(o.serialize() for o in txTo.vout))
+    if (out_type & SIGHASH_GROUP) == SIGHASH_GROUP:
+        for out_pos in group_outputs:
+            anypubkey_flag = False
+            anyamount_flag = False
+            if (out_type & SIGHASH_GROUP_ANYPUBKEY) == SIGHASH_GROUP_ANYPUBKEY:
+                if group_anypubkey[out_pos] == 1:
+                    anypubkey_flag = True
+            if (out_type & SIGHASH_GROUP_ANYAMOUNT) == SIGHASH_GROUP_ANYAMOUNT:
+                if group_anyamount[out_pos] == 1:
+                    anyamount_flag = True
+            if anyamount_flag is False:
+                ss += ser_string(txTo.vout[out_pos].scriptPubKey)
+            if anypubkey_flag is False:
+                ss += struct.pack("<q", txTo.vout[out_pos].nValue)
     spend_type = 0
     if annex is not None:
         spend_type |= 1
@@ -804,7 +823,7 @@ def TaprootSignatureHash(txTo, spent_utxos, hash_type, input_index = 0, scriptpa
         assert len(ss) ==  175 - (in_type == SIGHASH_ANYONECANPAY) * 49 - (out_type != SIGHASH_ALL and out_type != SIGHASH_SINGLE) * 32 + (annex is not None) * 32 + scriptpath * 37
     return TaggedHash("TapSighash", ss)
 
-def taproot_tree_helper(scripts):
+def taproot_tree_helper(scripts, withparity):
     if len(scripts) == 0:
         return ([], bytes())
     if len(scripts) == 1:
@@ -814,7 +833,10 @@ def taproot_tree_helper(scripts):
         if isinstance(script, list):
             return taproot_tree_helper(script)
         assert(isinstance(script, tuple))
-        version = LEAF_VERSION_TAPSCRIPT
+        if withparity is not None:
+            version = TAPROOT_LEAF_WITHPARITY
+        else:
+            version = LEAF_VERSION_TAPSCRIPT
         name = script[0]
         code = script[1]
         if len(script) == 3:
@@ -834,8 +856,8 @@ def taproot_tree_helper(scripts):
     else:
         # Two or more entries: descend into each side
         split_pos = len(scripts) // 2
-        left, left_h = taproot_tree_helper(scripts[0:split_pos])
-        right, right_h = taproot_tree_helper(scripts[split_pos:])
+        left, left_h = taproot_tree_helper(scripts[0:split_pos], withparity)
+        right, right_h = taproot_tree_helper(scripts[split_pos:], withparity)
         left = [(name, version, script, control + right_h) for name, version, script, control in left]
         right = [(name, version, script, control + left_h) for name, version, script, control in right]
     if right_h < left_h:
@@ -857,7 +879,7 @@ TaprootInfo = namedtuple("TaprootInfo", "scriptPubKey,internal_pubkey,negflag,tw
 # - merklebranch: the merkle branch to use for this leaf (32*N bytes)
 TaprootLeafInfo = namedtuple("TaprootLeafInfo", "script,version,merklebranch")
 
-def taproot_construct(pubkey, scripts=None):
+def taproot_construct(pubkey, scripts=None, withparity=None):
     """Construct a tree of Taproot spending conditions
 
     pubkey: a 32-byte xonly pubkey for the internal pubkey (bytes)
@@ -873,9 +895,14 @@ def taproot_construct(pubkey, scripts=None):
     """
     if scripts is None:
         scripts = []
-
-    ret, h = taproot_tree_helper(scripts)
-    tweak = TaggedHash("TapTweak", pubkey + h)
+    if withparity is not None:
+        ret, h = taproot_tree_helper(scripts, withparity)
+    else:
+        ret, h = taproot_tree_helper(scripts, withparity=None)
+    if withparity is not None:
+        tweak = TaggedHash("TapTweak", pubkey + h + int(withparity).to_bytes(1, 'big'))
+    else:
+        tweak = TaggedHash("TapTweak", pubkey + h)
     tweaked, negated = tweak_add_pubkey(pubkey, tweak)
     leaves = dict((name, TaprootLeafInfo(script, version, merklebranch)) for name, version, script, merklebranch in ret)
     return TaprootInfo(CScript([OP_1, tweaked]), pubkey, negated + 0, tweak, leaves)

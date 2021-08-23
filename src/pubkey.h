@@ -7,6 +7,7 @@
 #ifndef BITCOIN_PUBKEY_H
 #define BITCOIN_PUBKEY_H
 
+#include <logging.h>
 #include <hash.h>
 #include <serialize.h>
 #include <span.h>
@@ -238,6 +239,9 @@ public:
      *  !IsFullyValid(). */
     bool IsNull() const { return m_keydata.IsNull(); }
 
+    /** Determine if this pubkey has an even */
+    bool IsEven() const;
+
     /** Construct an x-only pubkey from exactly 32 bytes. */
     explicit XOnlyPubKey(Span<const unsigned char> bytes);
 
@@ -258,15 +262,19 @@ public:
      * Note that the behavior of this function with merkle_root != nullptr is
      * consensus critical.
      */
-    uint256 ComputeTapTweakHash(const uint256* merkle_root) const;
+    uint256 ComputeTapTweakHash(const uint256* merkle_root, const int* parity) const;
 
     /** Verify that this is a Taproot tweaked output point, against a specified internal key,
      *  Merkle root, and parity. */
-    bool CheckTapTweak(const XOnlyPubKey& internal, const uint256& merkle_root, bool parity) const;
+    bool CheckTapTweak(const XOnlyPubKey& internal, const uint256& merkle_root, bool parity, int *p_parity) const;
 
     /** Construct a Taproot tweaked output point with this point as internal key. */
     std::optional<std::pair<XOnlyPubKey, bool>> CreateTapTweak(const uint256* merkle_root) const;
 
+    /** Construct an updated internal key from this point by adding another one. */
+    std::optional<XOnlyPubKey>UpdateInternalKey(Span<const unsigned char> point, int parity_bit, int *new_parity_bit) const;
+
+    std::string ToString() const { return m_keydata.ToString(); }
     const unsigned char& operator[](int pos) const { return *(m_keydata.begin() + pos); }
     const unsigned char* data() const { return m_keydata.begin(); }
     static constexpr size_t size() { return decltype(m_keydata)::size(); }
