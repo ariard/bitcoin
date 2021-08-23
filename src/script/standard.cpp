@@ -568,7 +568,7 @@ std::optional<std::vector<std::tuple<int, CScript, int>>> InferTaprootTree(const
             if ((control[0] & TAPROOT_LEAF_MASK) != leaf_ver) continue;
             // Skip script records that don't match the provided Merkle root.
             const uint256 leaf_hash = ComputeTapleafHash(leaf_ver, script);
-            const uint256 merkle_root = ComputeTaprootMerkleRoot(control, leaf_hash);
+            const uint256 merkle_root = ComputeTaprootMerkleRoot(control, leaf_hash, 0);
             if (merkle_root != spenddata.merkle_root) continue;
 
             TreeNode* node = &root;

@@ -232,6 +232,21 @@ std::optional<std::pair<XOnlyPubKey, bool>> XOnlyPubKey::CreateTapTweak(const ui
     return ret;
 }
 
+std::optional<XOnlyPubKey> XOnlyPubKey::UpdateInternalKey(Span<const unsigned char> raw_sub_point) const
+{
+    secp256k1_xonly_pubkey base_point;
+    if (!secp256k1_xonly_pubkey_parse(secp256k1_context_verify, &base_point, data())) return std::nullopt;
+
+    secp256k1_xonly_pubkey sub_point;
+    if (!secp256k1_xonly_pubkey_parse(secp256k1_context_verify, &sub_point, raw_sub_point.begin())) return std::nullopt;
+
+    XOnlyPubKey new_point;
+    if (!secp256k1_xonly_pubkey_negate(secp256k1_context_verify, &sub_point)) return std::nullopt;
+    if (!secp256k1_xonly_pubkey_add(secp256k1_context_verify, &base_point, &sub_point)) return std::nullopt;
+
+    secp256k1_xonly_pubkey_serialize(secp256k1_context_verify, new_point.begin(), &base_point);
+    return new_point;
+}
 
 bool CPubKey::Verify(const uint256 &hash, const std::vector<unsigned char>& vchSig) const {
     if (!IsValid())

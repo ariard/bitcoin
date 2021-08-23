@@ -7,6 +7,7 @@
 #ifndef BITCOIN_PUBKEY_H
 #define BITCOIN_PUBKEY_H
 
+#include <logging.h>
 #include <hash.h>
 #include <serialize.h>
 #include <span.h>
@@ -267,6 +268,10 @@ public:
     /** Construct a Taproot tweaked output point with this point as internal key. */
     std::optional<std::pair<XOnlyPubKey, bool>> CreateTapTweak(const uint256* merkle_root) const;
 
+    /** Construct an updated internal key from this point by adding another one. */
+    std::optional<XOnlyPubKey>UpdateInternalKey(Span<const unsigned char> point) const;
+
+    std::string ToString() const { return m_keydata.ToString(); }
     const unsigned char& operator[](int pos) const { return *(m_keydata.begin() + pos); }
     const unsigned char* data() const { return m_keydata.begin(); }
     static constexpr size_t size() { return decltype(m_keydata)::size(); }

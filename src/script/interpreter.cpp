@@ -470,7 +470,6 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
     uint32_t opcode_pos = 0;
     execdata.m_codeseparator_pos = 0xFFFFFFFFUL;
     execdata.m_codeseparator_pos_init = true;
-
     try
     {
         for (; pc < pend; ++opcode_pos) {
@@ -629,7 +628,36 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                     break;
                 }
 
-                case OP_NOP1: case OP_NOP4: case OP_NOP5:
+                case OP_MERKLESUB:
+                {
+                    if (!(flags & SCRIPT_VERIFY_MERKLESUB)) {
+                        break;
+                    }
+
+                    if (stack.size() < 2) {
+                        return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
+                    }
+
+                    valtype& vchPubKey = stacktop(-1);
+
+                    if (vchPubKey.size() != 33) {
+                        return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
+                    }
+
+                    const std::vector<unsigned char>& vch = stacktop(-2);
+                    int nOutputPos = CScriptNum(stacktop(-2), fRequireMinimal).getint();
+
+                    if (nOutputPos < 0) {
+                        return set_error(serror, SCRIPT_ERR_NEGATIVE_MERKLEVOUT);
+                    }
+
+                    if (!checker.CheckMerkleUpdate(*execdata.m_control, nOutputPos, vchPubKey)) {
+                        return set_error(serror, SCRIPT_ERR_UNSATISFIED_MERKLESUB);
+                    }
+                    break;
+                }
+
+                case OP_NOP1: case OP_NOP5:
                 case OP_NOP6: case OP_NOP7: case OP_NOP8: case OP_NOP9: case OP_NOP10:
                 {
                     if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS)
@@ -1550,6 +1578,8 @@ bool SignatureHashSchnorr(uint256& hash_out, const ScriptExecutionData& execdata
             break;
         case 0x41: case 0x42: case 0x43:
         case 0xc1: case 0xc2: case 0xc3:
+        case 0x8: case 0x18: case 0x38:
+        case 0x78: case 0xf8:
             if (keyversion == KeyVersion::ANYPREVOUT) {
                 break;
             } else {
@@ -1559,6 +1589,8 @@ bool SignatureHashSchnorr(uint256& hash_out, const ScriptExecutionData& execdata
             return false;
     }
     ss << hash_type;
+
+    //TODO: rebase on top of anyprevout
 
     // Transaction level data
     ss << tx_to.nVersion;
@@ -1571,6 +1603,46 @@ bool SignatureHashSchnorr(uint256& hash_out, const ScriptExecutionData& execdata
     }
     if (output_type == SIGHASH_ALL) {
         ss << cache.m_outputs_single_hash;
+    }
+
+    if ((output_type & SIGHASH_GROUP) == SIGHASH_GROUP) {
+        // Verify the output group bounds
+        if (execdata.m_bundle->first == execdata.m_bundle->second || execdata.m_bundle->second >= tx_to.vout.size()) return false;
+
+
+        // Verify the value commitment
+        if (VerifyOutputsGroup(tx_to, cache.m_spent_outputs[in_pos].nValue, execdata.m_bundle->first, execdata.m_bundle->second)) return false;
+
+
+        for (unsigned int out_pos = execdata.m_bundle->first; out_pos < execdata.m_bundle->second + 1; out_pos++) {
+            bool anypubkey_flag = false;
+            bool anyamount_flag = false;
+            std::map<unsigned int, char>::const_iterator it;
+
+            if ((output_type & SIGHASH_GROUP_ANYPUBKEY) == SIGHASH_GROUP_ANYPUBKEY) {
+                it = execdata.m_anypubkeys.find(out_pos);
+                if (it != execdata.m_anypubkeys.end() && it->second == 1) {
+                    anypubkey_flag = true;
+                }
+            }
+
+            if ((output_type & SIGHASH_GROUP_ANYAMOUNT) == SIGHASH_GROUP_ANYAMOUNT) {
+                it = execdata.m_anyamounts.find(out_pos);
+                if (it != execdata.m_anyamounts.end() && it->second == 1) {
+                    anyamount_flag = true;
+                }
+            }
+
+            //CHashWriter sha_output_data(SER_GETHASH, 0);
+            if (!anypubkey_flag) {
+                ss << tx_to.vout[out_pos].scriptPubKey;
+            }
+            if (!anyamount_flag) {
+                ss << tx_to.vout[out_pos].nValue;
+            }
+            //ss << sha_output_data.GetSHA256();
+
+        }
     }
 
     // Data about the input/prevout being spent
@@ -1830,20 +1902,66 @@ bool GenericTransactionSignatureChecker<T>::CheckSequence(const CScriptNum& nSeq
     return true;
 }
 
+template <class T>
+bool GenericTransactionSignatureChecker<T>::CheckMerkleUpdate(const std::vector<unsigned char>& control, unsigned int out_pos, const std::vector<unsigned char>& point, const internal_evenness) const
+{
+    //! The internal pubkey (x-only, so no Y coordinate parity).
+    XOnlyPubKey p{uint256(std::vector<unsigned char>(control.begin() + 1, control.begin() + TAPROOT_CONTROL_BASE_SIZE))};
+    //! Update the internal key by subtracting the point.
+    bool internal_evenness = point[0];
+    XOnlyPubKey s{uint256(std::vector<unsigned char>(point.begin(), point.begin() + 32))};
+    XOnlyPubKey u;
+    try {
+        u = p.UpdateInternalKey(s).value();
+    } catch (const std::bad_optional_access& e) {
+        return false;
+    }
+
+
+    return false;
+
+    //! The first control node is made the new tapleaf hash.
+    //! TODO: what if there is no control node ?
+    uint256 updated_tapleaf_hash;
+    updated_tapleaf_hash = uint256(std::vector<unsigned char>(control.data() + TAPROOT_CONTROL_BASE_SIZE, control.data() + TAPROOT_CONTROL_BASE_SIZE + TAPROOT_CONTROL_NODE_SIZE));
+
+    //! The committed-to output must be in the spent transaction vout range.
+    if (out_pos >= txTo->vout.size()) return false;
+    int witnessversion;
+    std::vector<unsigned char> witnessprogram;
+    txTo->vout[out_pos].scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram);
+    //! The committed to output must be a witness v1 program at least
+    if (witnessversion == 0) {
+        return false;
+    } else if (witnessversion == 1) {
+        //! The committed-to output.
+        const XOnlyPubKey q{uint256(witnessprogram)};
+        //! Compute the Merkle root from the leaf and the incremented by one path.
+        const uint256 merkle_root = ComputeTaprootMerkleRoot(control, updated_tapleaf_hash, 1);
+        //! TODO modify MERKLESUB design to accept a 33-byte point with a 1-byte to signal parity
+        bool parity_ret = q.CheckTapTweak(u, merkle_root, true);
+        bool no_parity_ret = q.CheckTapTweak(u, merkle_root, false);
+        if (!parity_ret && !no_parity_ret) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // explicit instantiation
 template class GenericTransactionSignatureChecker<CTransaction>;
 template class GenericTransactionSignatureChecker<CMutableTransaction>;
 
-static bool ExecuteWitnessScript(const Span<const valtype>& stack_span, const CScript& scriptPubKey, unsigned int flags, SigVersion sigversion, const BaseSignatureChecker& checker, ScriptExecutionData& execdata, ScriptError* serror)
+static bool ExecuteWitnessScript(const Span<const valtype>& stack_span, const CScript& exec_script, unsigned int flags, SigVersion sigversion, const BaseSignatureChecker& checker, ScriptExecutionData& execdata, ScriptError* serror)
 {
     std::vector<valtype> stack{stack_span.begin(), stack_span.end()};
 
     if (sigversion == SigVersion::TAPSCRIPT) {
         // OP_SUCCESSx processing overrides everything, including stack element size limits
-        CScript::const_iterator pc = scriptPubKey.begin();
-        while (pc < scriptPubKey.end()) {
+        CScript::const_iterator pc = exec_script.begin();
+        while (pc < exec_script.end()) {
             opcodetype opcode;
-            if (!scriptPubKey.GetOp(pc, opcode)) {
+            if (!exec_script.GetOp(pc, opcode)) {
                 // Note how this condition would not be reached if an unknown OP_SUCCESSx was found
                 return set_error(serror, SCRIPT_ERR_BAD_OPCODE);
             }
@@ -1866,7 +1984,7 @@ static bool ExecuteWitnessScript(const Span<const valtype>& stack_span, const CS
     }
 
     // Run the script interpreter.
-    if (!EvalScript(stack, scriptPubKey, flags, checker, sigversion, execdata, serror)) return false;
+    if (!EvalScript(stack, exec_script, flags, checker, sigversion, execdata, serror)) return false;
 
     // Scripts inside witness implicitly require cleanstack behaviour
     if (stack.size() != 1) return set_error(serror, SCRIPT_ERR_CLEANSTACK);
@@ -1879,13 +1997,15 @@ uint256 ComputeTapleafHash(uint8_t leaf_version, const CScript& script)
     return (CHashWriter(HASHER_TAPLEAF) << leaf_version << script).GetSHA256();
 }
 
-uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint256& tapleaf_hash)
+uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint256& tapleaf_hash, unsigned int control_pos)
 {
     const int path_len = (control.size() - TAPROOT_CONTROL_BASE_SIZE) / TAPROOT_CONTROL_NODE_SIZE;
     uint256 k = tapleaf_hash;
-    for (int i = 0; i < path_len; ++i) {
+    for (int i = control_pos; i < path_len; ++i) {
         CHashWriter ss_branch{HASHER_TAPBRANCH};
         Span<const unsigned char> node(control.data() + TAPROOT_CONTROL_BASE_SIZE + TAPROOT_CONTROL_NODE_SIZE * i, TAPROOT_CONTROL_NODE_SIZE);
+        uint256 node2;
+        node2 = uint256(std::vector<unsigned char>(control.data() + TAPROOT_CONTROL_BASE_SIZE + TAPROOT_CONTROL_NODE_SIZE * i, control.data() + TAPROOT_CONTROL_BASE_SIZE + TAPROOT_CONTROL_NODE_SIZE * (i + 1)));
         if (std::lexicographical_compare(k.begin(), k.end(), node.begin(), node.end())) {
             ss_branch << k << node;
         } else {
@@ -1896,27 +2016,119 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
     return k;
 }
 
-static bool VerifyTaprootCommitment(const std::vector<unsigned char>& control, const std::vector<unsigned char>& program, uint256& tapleaf_hash, std::optional<XOnlyPubKey>* internal_key)
+static bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata)
+{
+    const int annex_len = annex.size();
+    bool group_present = false;
+    for (int i = 1; i < annex_len;) {
+
+        /* Verify the next annex record has at least type-length fields */
+        if (i + 1 >= annex_len) {
+            return false;
+        }
+
+        const int record_type = annex[i];
+        const int record_length = annex[i + 1];
+        switch (record_type)
+        {
+            case ANNEX_GROUP:
+            {
+                //TODO: check annex bounds
+                group_present = true;
+                unsigned int group_count;
+                if (record_length == 1)
+                    group_count = annex[i + 2];
+                else if (record_length == 2)
+                    group_count = ReadBE16(&annex[i + 2]);
+                else if (record_length == 4)
+                    group_count = ReadBE32(&annex[i + 2]);
+                else {
+                    return false;
+                }
+                if (group_count < 0) {
+                    return false;
+                } else {
+                    execdata.m_bundle->first = execdata.m_bundle->second;
+                    execdata.m_bundle->second += group_count;
+                }
+                break;
+            }
+            // MUST be ordered after ANNEX_GROUP
+            case ANNEX_ANYPUBKEY:
+            {
+                if (!group_present) {
+                    return false;
+                }
+                for (int j=0; j < record_length; j++) {
+                    unsigned int byte = annex[i + 2 + j];
+                    for (int k=0; k < 8; k++) {
+                        unsigned int out_pos = execdata.m_bundle->first + j * 7 + k;
+                        execdata.m_anypubkeys.emplace(out_pos, (char)((byte >> k) & 1));
+                    }
+                }
+                break;
+            }
+            // MUST be ordered after ANNEX_GROUP
+            case ANNEX_ANYAMOUNT:
+            {
+                if (!group_present) {
+                    return false;
+                }
+                for (int j=0; j < record_length; j++) {
+                    unsigned int byte = annex[i + 2 + j];
+                    for (int k=0; k < 8; k++) {
+                        unsigned int out_pos = execdata.m_bundle->first + j * 7 + k;
+                        execdata.m_anyamounts.emplace(out_pos, (char)((byte >> k) & 1));
+                    }
+                }
+                break;
+            }
+        }
+        i += 2 + record_length;
+    }
+    if (!group_present) {
+        execdata.m_bundle->first = execdata.m_bundle->second;
+    }
+    return true;
+}
+
+template<typename T>
+static bool VerifyOutputsGroup(const T& tx_to, CAmount nValueIn, uint32_t out_start, uint32_t out_end)
+{
+    //TODO: version output group ?
+    CAmount nValueOut;
+
+    for (unsigned int out_pos = out_start; out_pos < out_end; out_pos++) {
+        nValueOut += tx_to.vout[out_pos].nValue;
+    }
+
+    if (nValueIn != nValueOut) return false;
+    return true;
+}
+
+static bool VerifyTaprootCommitment(const std::vector<unsigned char>& control, const std::vector<unsigned char>& program, const uint256& tapleaf_hash, std::optional<XOnlyPubKey>* internal_key, std::optional<std::vector<unsigned char>>* control_block)
 {
     assert(control.size() >= TAPROOT_CONTROL_BASE_SIZE);
     assert(program.size() >= uint256::size());
     //! The internal pubkey (x-only, so no Y coordinate parity).
     const XOnlyPubKey p{uint256(std::vector<unsigned char>(control.begin() + 1, control.begin() + TAPROOT_CONTROL_BASE_SIZE))};
     if (internal_key) *internal_key = p;
+    if (control_block) *control_block = control;
     //! The output pubkey (taken from the scriptPubKey).
     const XOnlyPubKey q{uint256(program)};
     // Compute the Merkle root from the leaf and the provided path.
-    const uint256 merkle_root = ComputeTaprootMerkleRoot(control, tapleaf_hash);
+    const uint256 merkle_root = ComputeTaprootMerkleRoot(control, tapleaf_hash, 0);
     // Verify that the output pubkey matches the tweaked internal pubkey, after correcting for parity.
     return q.CheckTapTweak(p, merkle_root, control[0] & 1);
 }
 
-static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, const std::vector<unsigned char>& program, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror, bool is_p2sh)
+static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, const std::vector<unsigned char>& program, unsigned int flags, const BaseSignatureChecker& checker, StatePair* bundle, ScriptError* serror, bool is_p2sh)
 {
     CScript exec_script; //!< Actually executed script (last stack item in P2WSH; implied P2PKH script in P2WPKH; leaf script in P2TR)
     Span<const valtype> stack{witness.stack};
     ScriptExecutionData execdata;
 
+    execdata.m_bundle = bundle;
     if (witversion == 0) {
         if (program.size() == WITNESS_V0_SCRIPTHASH_SIZE) {
             // BIP141 P2WSH: 32-byte witness v0 program (which encodes SHA256(script))
@@ -1948,6 +2160,11 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
         if (stack.size() >= 2 && !stack.back().empty() && stack.back()[0] == ANNEX_TAG) {
             // Drop annex (this is non-standard; see IsWitnessStandard)
             const valtype& annex = SpanPopBack(stack);
+            if (flags & SCRIPT_VERIFY_BUNDLE) {
+                if (!VerifyAnnex(annex, execdata)) {
+                    return set_error(serror, SCRIPT_ERR_ANNEX_WRONG_FORMAT);
+                }
+            }
             execdata.m_annex_hash = (CHashWriter(SER_GETHASH, 0) << annex).GetSHA256();
             execdata.m_annex_present = true;
         } else {
@@ -1968,8 +2185,8 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
             if (control.size() < TAPROOT_CONTROL_BASE_SIZE || control.size() > TAPROOT_CONTROL_MAX_SIZE || ((control.size() - TAPROOT_CONTROL_BASE_SIZE) % TAPROOT_CONTROL_NODE_SIZE) != 0) {
                 return set_error(serror, SCRIPT_ERR_TAPROOT_WRONG_CONTROL_SIZE);
             }
-            execdata.m_tapleaf_hash = ComputeTapleafHash(control[0] & TAPROOT_LEAF_MASK, exec_script);
-            if (!VerifyTaprootCommitment(control, program, execdata.m_tapleaf_hash, &execdata.m_internal_key)) {
+            execdata.m_tapleaf_hash = ComputeTapleafHash(control[0] & TAPROOT_LEAF_MASK, exec_script, control[0] & TAPROOT_INTERNAL_MASK);
+            if (!VerifyTaprootCommitment(control, program, execdata.m_tapleaf_hash, &execdata.m_internal_key, &execdata.m_control)) {
                 return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
             }
             execdata.m_tapleaf_hash_init = true;
@@ -1994,8 +2211,9 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
     // There is intentionally no return statement here, to be able to use "control reaches end of non-void function" warnings to detect gaps in the logic above.
 }
 
-bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
+bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, StatePair* bundle, ScriptError* serror)
 {
+
     static const CScriptWitness emptyWitness;
     if (witness == nullptr) {
         witness = &emptyWitness;
@@ -2034,7 +2252,7 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
                 // The scriptSig must be _exactly_ CScript(), otherwise we reintroduce malleability.
                 return set_error(serror, SCRIPT_ERR_WITNESS_MALLEATED);
             }
-            if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, flags, checker, serror, /* is_p2sh */ false)) {
+            if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, flags, checker, bundle, serror, /* is_p2sh */ false)) {
                 return false;
             }
             // Bypass the cleanstack check at the end. The actual stack is obviously not clean
@@ -2079,7 +2297,7 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
                     // reintroduce malleability.
                     return set_error(serror, SCRIPT_ERR_WITNESS_MALLEATED_P2SH);
                 }
-                if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, flags, checker, serror, /* is_p2sh */ true)) {
+                if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, flags, checker, bundle, serror, /* is_p2sh */ true)) {
                     return false;
                 }
                 // Bypass the cleanstack check at the end. The actual stack is obviously not clean
