@@ -33,6 +33,10 @@ std::string DeploymentName(Consensus::BuriedDeployment dep)
         return "segwit";
     case Consensus::DEPLOYMENT_ANYPREVOUT:
         return "anyprevout";
+    case Consensus::DEPLOYMENT_MSB:
+        return "msb";
+    case Consensus::DEPLOYMENT_BUNDLE:
+        return "bundle";
     } // no default case, so the compiler can warn about missing cases
     return "";
 }

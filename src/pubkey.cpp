@@ -196,23 +196,26 @@ bool XOnlyPubKey::VerifySchnorr(const uint256& msg, Span<const unsigned char> si
 
 static const CHashWriter HASHER_TAPTWEAK = TaggedHash("TapTweak");
 
-uint256 XOnlyPubKey::ComputeTapTweakHash(const uint256* merkle_root) const
+uint256 XOnlyPubKey::ComputeTapTweakHash(const uint256* merkle_root, const int *parity_bit) const
 {
     if (merkle_root == nullptr) {
         // We have no scripts. The actual tweak does not matter, but follow BIP341 here to
         // allow for reproducible tweaking.
         return (CHashWriter(HASHER_TAPTWEAK) << m_keydata).GetSHA256();
+    } else if (parity_bit != nullptr) {
+        // We have scripts and the parity bit has been committed.
+        return (CHashWriter(HASHER_TAPTWEAK) << m_keydata << *merkle_root << ((uint8_t)*parity_bit)).GetSHA256();
     } else {
         return (CHashWriter(HASHER_TAPTWEAK) << m_keydata << *merkle_root).GetSHA256();
     }
 }
 
-bool XOnlyPubKey::CheckTapTweak(const XOnlyPubKey& internal, const uint256& merkle_root, bool parity) const
+bool XOnlyPubKey::CheckTapTweak(const XOnlyPubKey& internal, const uint256& merkle_root, bool q_parity, int* p_parity) const
 {
     secp256k1_xonly_pubkey internal_key;
     if (!secp256k1_xonly_pubkey_parse(secp256k1_context_verify, &internal_key, internal.data())) return false;
-    uint256 tweak = internal.ComputeTapTweakHash(&merkle_root);
-    return secp256k1_xonly_pubkey_tweak_add_check(secp256k1_context_verify, m_keydata.begin(), parity, &internal_key, tweak.begin());
+    uint256 tweak = internal.ComputeTapTweakHash(&merkle_root, p_parity);
+    return secp256k1_xonly_pubkey_tweak_add_check(secp256k1_context_verify, m_keydata.begin(), q_parity, &internal_key, tweak.begin());
 }
 
 std::optional<std::pair<XOnlyPubKey, bool>> XOnlyPubKey::CreateTapTweak(const uint256* merkle_root) const
@@ -220,7 +223,7 @@ std::optional<std::pair<XOnlyPubKey, bool>> XOnlyPubKey::CreateTapTweak(const ui
     secp256k1_xonly_pubkey base_point;
     if (!secp256k1_xonly_pubkey_parse(secp256k1_context_verify, &base_point, data())) return std::nullopt;
     secp256k1_pubkey out;
-    uint256 tweak = ComputeTapTweakHash(merkle_root);
+    uint256 tweak = ComputeTapTweakHash(merkle_root, nullptr);
     if (!secp256k1_xonly_pubkey_tweak_add(secp256k1_context_verify, &out, &base_point, tweak.data())) return std::nullopt;
     int parity = -1;
     std::pair<XOnlyPubKey, bool> ret;
@@ -232,6 +235,21 @@ std::optional<std::pair<XOnlyPubKey, bool>> XOnlyPubKey::CreateTapTweak(const ui
     return ret;
 }
 
+std::optional<XOnlyPubKey> XOnlyPubKey::UpdateInternalKey(Span<const unsigned char> raw_sub_point, int parity_bit, int *new_parity_bit) const
+{
+    secp256k1_xonly_pubkey base_point;
+    if (!secp256k1_xonly_pubkey_parse(secp256k1_context_verify, &base_point, data())) return std::nullopt;
+
+    secp256k1_xonly_pubkey sub_point;
+    if (!secp256k1_xonly_pubkey_parse(secp256k1_context_verify, &sub_point, raw_sub_point.begin())) return std::nullopt;
+
+    XOnlyPubKey new_point;
+    if (!secp256k1_xonly_pubkey_negate(secp256k1_context_verify, &sub_point)) return std::nullopt;
+    if (!secp256k1_xonly_pubkey_add(secp256k1_context_verify, &base_point, &sub_point, parity_bit, new_parity_bit)) return std::nullopt;
+
+    secp256k1_xonly_pubkey_serialize(secp256k1_context_verify, new_point.begin(), &base_point);
+    return new_point;
+}
 
 bool CPubKey::Verify(const uint256 &hash, const std::vector<unsigned char>& vchSig) const {
     if (!IsValid())
