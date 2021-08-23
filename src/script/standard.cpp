@@ -157,6 +157,7 @@ TxoutType Solver(const CScript& scriptPubKey, std::vector<std::vector<unsigned c
     int witnessversion;
     std::vector<unsigned char> witnessprogram;
     if (scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram)) {
+        LogPrintf("Solving witness program...%d\n", witnessversion);
         if (witnessversion == 0 && witnessprogram.size() == WITNESS_V0_KEYHASH_SIZE) {
             vSolutionsRet.push_back(std::move(witnessprogram));
             return TxoutType::WITNESS_V0_KEYHASH;
@@ -176,6 +177,7 @@ TxoutType Solver(const CScript& scriptPubKey, std::vector<std::vector<unsigned c
         }
         return TxoutType::NONSTANDARD;
     }
+    LogPrintf("In Solver %d len %u...\n", witnessversion, witnessprogram.size());
 
     // Provably prunable, data-carrying output
     //
@@ -568,7 +570,7 @@ std::optional<std::vector<std::tuple<int, CScript, int>>> InferTaprootTree(const
             if ((control[0] & TAPROOT_LEAF_MASK) != leaf_ver) continue;
             // Skip script records that don't match the provided Merkle root.
             const uint256 leaf_hash = ComputeTapleafHash(leaf_ver, script);
-            const uint256 merkle_root = ComputeTaprootMerkleRoot(control, leaf_hash);
+            const uint256 merkle_root = ComputeTaprootMerkleRoot(control, leaf_hash, 0);
             if (merkle_root != spenddata.merkle_root) continue;
 
             TreeNode* node = &root;

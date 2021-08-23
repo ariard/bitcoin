@@ -6,6 +6,7 @@
 #ifndef BITCOIN_SCRIPT_INTERPRETER_H
 #define BITCOIN_SCRIPT_INTERPRETER_H
 
+#include <logging.h>
 #include <hash.h>
 #include <script/script_error.h>
 #include <span.h>
@@ -30,9 +31,12 @@ enum
     SIGHASH_ANYONECANPAY = 0x80,
     SIGHASH_ANYPREVOUT = 0x40,
     SIGHASH_ANYPREVOUTANYSCRIPT = 0xc0,
+    SIGHASH_GROUP = 0x8,
+    SIGHASH_GROUP_ANYPUBKEY = 0x18,
+    SIGHASH_GROUP_ANYAMOUNT = 0x28,
 
     SIGHASH_DEFAULT = 0, //!< Taproot only; implied when sighash byte is missing, and equivalent to SIGHASH_ALL
-    SIGHASH_OUTPUT_MASK = 3,
+    SIGHASH_OUTPUT_MASK = 0x3D,
     SIGHASH_INPUT_MASK = 0xc0,
 };
 
@@ -145,6 +149,20 @@ enum
 
     // Validating ANYPREVOUT public keys
     SCRIPT_VERIFY_ANYPREVOUT = (1U << 21),
+
+    // Verify MERKLESUB
+    //
+    // See BIPXXX for details.
+    SCRIPT_VERIFY_MERKLESUB = (1U << 22),
+
+    // Verify bundle
+    //
+    // See BIPYYY for details.
+    SCRIPT_VERIFY_BUNDLE = (1U << 22),
+
+    // Constants to point to the highest flag in use. Add new flags above this line.
+    //
+    SCRIPT_VERIFY_END_MARKER
 };
 
 bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
@@ -199,6 +217,8 @@ struct VersionedXOnlyPubKey
     XOnlyPubKey pubkey;
 };
 
+typedef std::pair<size_t, size_t> StatePair;
+
 struct ScriptExecutionData
 {
     //! Whether m_tapleaf_hash is initialized.
@@ -218,6 +238,13 @@ struct ScriptExecutionData
     //! Hash of the annex data.
     uint256 m_annex_hash;
 
+    //! Whether a bundle is present.
+    StatePair* m_bundle;
+    //! ANYPUBKEY bundle index map
+    std::map<unsigned int, char> m_anypubkeys;
+    //! ANYAMOUNT bundle index map
+    std::map<unsigned int, char> m_anyamounts;
+
     //! Whether m_validation_weight_left is initialized.
     bool m_validation_weight_left_init = false;
     //! How much validation weight is left (decremented for every successful non-empty signature check).
@@ -225,6 +252,9 @@ struct ScriptExecutionData
 
     /** The taproot internal key. */
     std::optional<XOnlyPubKey> m_internal_key = std::nullopt;
+
+    /** The taproot control block. */
+    std::optional<std::vector<unsigned char>> m_control = std::nullopt;
 };
 
 /** Signature hash sizes */
@@ -267,6 +297,10 @@ public:
     {
          return false;
     }
+    virtual bool CheckMerkleUpdate(const std::vector<unsigned char>& control, unsigned int vout, const std::vector<unsigned char>& updated_p) const
+    {
+        return false;
+    }
 
     virtual ~BaseSignatureChecker() {}
 };
@@ -304,6 +338,7 @@ public:
     bool CheckSchnorrSignature(Span<const unsigned char> sig, const VersionedXOnlyPubKey& verpubkey, SigVersion sigversion, const ScriptExecutionData& execdata, ScriptError* serror = nullptr) const override;
     bool CheckLockTime(const CScriptNum& nLockTime) const override;
     bool CheckSequence(const CScriptNum& nSequence) const override;
+    bool CheckMerkleUpdate(const std::vector<unsigned char>& control, unsigned int vout, const std::vector<unsigned char>& updated_p) const override;
 };
 
 using TransactionSignatureChecker = GenericTransactionSignatureChecker<CTransaction>;
@@ -341,11 +376,11 @@ public:
 uint256 ComputeTapleafHash(uint8_t leaf_version, const CScript& script);
 /** Compute the BIP341 taproot script tree Merkle root from control block and leaf hash.
  *  Requires control block to have valid length (33 + k*32, with k in {0,1,..,128}). */
-uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint256& tapleaf_hash);
+uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint256& tapleaf_hash, unsigned int control_pos);
 
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* error = nullptr);
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = nullptr);
-bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
+bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, StatePair* bundle = nullptr, ScriptError* serror = nullptr);
 
 size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags);
 
