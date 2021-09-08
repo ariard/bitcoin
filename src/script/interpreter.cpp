@@ -652,8 +652,11 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 
                     valtype& vchPubKey = stacktop(-1);
 
-                    if (vchPubKey.size() != 32) {
-                        break;
+                    LogPrintf("New measurement size %d!\n", vchPubKey.size());
+
+                    if (vchPubKey.size() != 33) {
+                        LogPrintf("Faulty subtraction point size!\n");
+                        return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
                     }
                     LogPrintf("vchPubKey size %d!\n", vchPubKey.size());
 
@@ -1851,6 +1854,7 @@ bool GenericTransactionSignatureChecker<T>::CheckSchnorrSignature(Span<const uns
     if (!SignatureHashSchnorr(sighash, execdata, *txTo, nIn, hashtype, sigversion, verpubkey.version, *this->txdata, m_mdb)) {
         return set_error(serror, SCRIPT_ERR_SCHNORR_SIG_HASHTYPE);
     }
+    LogPrintf("Keypath pubkey %s\n", verpubkey.pubkey.ToString());
     if (!VerifySchnorrSignature(sig, verpubkey.pubkey, sighash)) return set_error(serror, SCRIPT_ERR_SCHNORR_SIG);
     return true;
 }
@@ -1940,18 +1944,25 @@ bool GenericTransactionSignatureChecker<T>::CheckSequence(const CScriptNum& nSeq
 }
 
 template <class T>
-bool GenericTransactionSignatureChecker<T>::CheckMerkleUpdate(const std::vector<unsigned char>& control, unsigned int out_pos, const std::vector<unsigned char>& point) const
+bool GenericTransactionSignatureChecker<T>::CheckMerkleUpdate(const std::vector<unsigned char>& control, unsigned int out_pos, const std::vector<unsigned char>& point, const internal_evenness) const
 {
     //! The internal pubkey (x-only, so no Y coordinate parity).
     XOnlyPubKey p{uint256(std::vector<unsigned char>(control.begin() + 1, control.begin() + TAPROOT_CONTROL_BASE_SIZE))};
     //! Update the internal key by subtracting the point.
-    XOnlyPubKey s{uint256(point)};
+    bool internal_evenness = point[0];
+    XOnlyPubKey s{uint256(std::vector<unsigned char>(point.begin(), point.begin() + 32))};
     XOnlyPubKey u;
+    LogPrintf("P pubkey %s\n", p.ToString());
+    LogPrintf("S pubkey %s\n", s.ToString());
     try {
         u = p.UpdateInternalKey(s).value();
     } catch (const std::bad_optional_access& e) {
         return false;
     }
+
+    LogPrintf("U pubkey %s\n", u.ToString());
+
+    return false;
 
     //! The first control node is made the new tapleaf hash.
     //! TODO: what if there is no control node ?
@@ -1974,7 +1985,7 @@ bool GenericTransactionSignatureChecker<T>::CheckMerkleUpdate(const std::vector<
         LogPrintf("new merkle root %s\n", merkle_root.ToString());
         LogPrintf("U pubkey %s\n", u.ToString());
         LogPrintf("Q pubkey %s\n", q.ToString());
-        //! TODO modify MERKLESUB design
+        //! TODO modify MERKLESUB design to accept a 33-byte point with a 1-byte to signal parity
         bool parity_ret = q.CheckTapTweak(u, merkle_root, true);
         bool no_parity_ret = q.CheckTapTweak(u, merkle_root, false);
         if (!parity_ret && !no_parity_ret) {
