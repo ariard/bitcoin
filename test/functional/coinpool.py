@@ -158,9 +158,9 @@ class CoinpoolTest(BitcoinTestFramework):
 
         pool_pubkey = SECP256K1.affine(Pabcd)
         if SECP256K1.has_even_y(pool_pubkey):
-            internal_evenness = bytes(0x01)
+            internal_parity = bytes(0x01)
         else:
-            internal_evenness = bytes(0x02)
+            internal_parity = bytes(0x00)
 
         if SECP256K1.has_even_y(pool_pubkey) == False:
             print("Pabcd odd")
@@ -193,7 +193,7 @@ class CoinpoolTest(BitcoinTestFramework):
         withdraw_tapscripts = [("s0", alice_withdraw_tapscript), ("s1", bob_withdraw_tapscript), ("s2", caroll_withdraw_tapscript), ("s3", dave_withdraw_tapscript)]
 
         # Generate the pool tree
-        pool_tree = taproot_construct(pool_pubkey[0].to_bytes(32, 'big'), withdraw_tapscripts)
+        pool_tree = taproot_construct(pool_pubkey[0].to_bytes(32, 'big'), withdraw_tapscripts, internal_parity)
 
         # Generate the setup transaction
         coin = coins.pop() # Pick a random coin(base) to spend
