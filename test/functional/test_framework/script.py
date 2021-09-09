@@ -30,6 +30,7 @@ LOCKTIME_THRESHOLD = 500000000
 ANNEX_TAG = 0x50
 
 LEAF_VERSION_TAPSCRIPT = 0xc0
+LEAF_PARITY_TAPSCRIPT = 0x30
 KEY_VERSION_TAPROOT = 0x00
 KEY_VERSION_ANYPREVOUT = 0x01
 
@@ -835,7 +836,7 @@ def TaprootSignatureHash(txTo, spent_utxos, hash_type, input_index = 0, scriptpa
         assert len(ss) ==  175 - (in_type == SIGHASH_ANYONECANPAY) * 49 - (out_type != SIGHASH_ALL and out_type != SIGHASH_SINGLE) * 32 + (annex is not None) * 32 + scriptpath * 37
     return TaggedHash("TapSighash", ss)
 
-def taproot_tree_helper(scripts):
+def taproot_tree_helper(scripts, internal_parity=None):
     if len(scripts) == 0:
         return ([], bytes())
     if len(scripts) == 1:
@@ -845,14 +846,20 @@ def taproot_tree_helper(scripts):
         if isinstance(script, list):
             return taproot_tree_helper(script)
         assert(isinstance(script, tuple))
-        version = LEAF_VERSION_TAPSCRIPT
+        if internal_parity is not None:
+            version = LEAF_PARITY_TAPSCRIPT
+        else:
+            version = LEAF_VERSION_TAPSCRIPT
         name = script[0]
         code = script[1]
         if len(script) == 3:
             version = script[2]
         assert version & 1 == 0
         assert isinstance(code, bytes)
-        h = TaggedHash("TapLeaf", bytes([version]) + ser_string(code))
+        if internal_parity is not None:
+            h = TaggedHash("TapLeaf", bytes([version]) + ser_string(code) + bytes(internal_parity))
+        else:
+            h = TaggedHash("TapLeaf", bytes([version]) + ser_string(code))
         if name is None:
             return ([], h)
         return ([(name, version, code, bytes())], h)
@@ -888,7 +895,7 @@ TaprootInfo = namedtuple("TaprootInfo", "scriptPubKey,internal_pubkey,negflag,tw
 # - merklebranch: the merkle branch to use for this leaf (32*N bytes)
 TaprootLeafInfo = namedtuple("TaprootLeafInfo", "script,version,merklebranch")
 
-def taproot_construct(pubkey, scripts=None):
+def taproot_construct(pubkey, scripts=None, internal_parity=None):
     """Construct a tree of Taproot spending conditions
 
     pubkey: a 32-byte xonly pubkey for the internal pubkey (bytes)
@@ -905,7 +912,10 @@ def taproot_construct(pubkey, scripts=None):
     if scripts is None:
         scripts = []
 
-    ret, h = taproot_tree_helper(scripts)
+    if internal_parity is not None:
+        ret, h = taproot_tree_helper(scripts, internal_parity)
+    else:
+        ret, h = taproot_tree_helper(scripts)
     tweak = TaggedHash("TapTweak", pubkey + h)
     tweaked, negated = tweak_add_pubkey(pubkey, tweak)
     leaves = dict((name, TaprootLeafInfo(script, version, merklebranch)) for name, version, script, merklebranch in ret)
