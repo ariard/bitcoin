@@ -47,6 +47,7 @@ from test_framework.script import (
         SIGHASH_GROUP,
         SIGHASH_GROUP_ANYPUBKEY,
         SIGHASH_GROUP_ANYAMOUNT,
+        TAPROOT_LEAF_WITHPARITY,
         TaprootSignatureHash,
         taproot_construct,
         taproot_tree_helper
@@ -112,32 +113,16 @@ class CoinpoolTest(BitcoinTestFramework):
         # Aggregate contribution (unsafe!)
         xa = int.from_bytes(alice_pool_pubkey, 'big')
         Pa = SECP256K1.lift_x(xa)
-        if SECP256K1.has_even_y(Pa) == False:
-            print("Pa odd")
-        else:
-            print("Pa even")
 
         xb = int.from_bytes(bob_pool_pubkey, 'big')
         Pb = SECP256K1.lift_x(xb)
-        if SECP256K1.has_even_y(Pb) == False:
-            print("Pb odd")
-        else:
-            print("Pb even")
 
         xc = int.from_bytes(caroll_pool_pubkey, 'big')
         Pc = SECP256K1.lift_x(xc)
-        if SECP256K1.has_even_y(Pc) == False:
-            print("Pc odd")
-        else:
-            print("Pc even")
 
         xd = int.from_bytes(dave_pool_pubkey, 'big')
         Pd = SECP256K1.lift_x(xd)
         print("before, Pd pubkey " + hex(int.from_bytes(Pd[0].to_bytes(32, 'big'), 'little')))
-        if SECP256K1.has_even_y(Pd) == False:
-            print("Pd odd")
-        else:
-            print("Pd even")
 
         Pab = SECP256K1.add(Pa, Pb)
         Pabc = SECP256K1.add(Pab, Pc)
@@ -157,10 +142,12 @@ class CoinpoolTest(BitcoinTestFramework):
         assert(SECP256K1.affine(Pd) == SECP256K1.affine(Pd2))
 
         pool_pubkey = SECP256K1.affine(Pabcd)
-        if SECP256K1.has_even_y(pool_pubkey):
-            internal_parity = bytes(0x01)
+        if SECP256K1.has_even_y(pool_pubkey) == True:
+            print("parity even")
+            abcd_parity = 0x2
         else:
-            internal_parity = bytes(0x00)
+            print("parity odd")
+            abcd_parity = 0x0
 
         if SECP256K1.has_even_y(pool_pubkey) == False:
             print("Pabcd odd")
@@ -193,7 +180,7 @@ class CoinpoolTest(BitcoinTestFramework):
         withdraw_tapscripts = [("s0", alice_withdraw_tapscript), ("s1", bob_withdraw_tapscript), ("s2", caroll_withdraw_tapscript), ("s3", dave_withdraw_tapscript)]
 
         # Generate the pool tree
-        pool_tree = taproot_construct(pool_pubkey[0].to_bytes(32, 'big'), withdraw_tapscripts, internal_parity)
+        pool_tree = taproot_construct(pool_pubkey[0].to_bytes(32, 'big'), withdraw_tapscripts, withparity=abcd_parity)
 
         # Generate the setup transaction
         coin = coins.pop() # Pick a random coin(base) to spend
@@ -221,43 +208,41 @@ class CoinpoolTest(BitcoinTestFramework):
         caroll_withdraw_tx.vout.append(CTxOut(caroll_amount, caroll_exit_scriptpubkey))
 
         # We cancel Alice contribution from the aggregated key
-        #if SECP256K1.has_even_y(Pa) == False:
-        #    print("Pa odd")
-        #else:
-        #    print("Pa even")
         Pna = SECP256K1.negate(Pa)
 
         P = SECP256K1.add(pool_pubkey, Pna)
-        if SECP256K1.has_even_y(P) == False:
-            print("P is odd")
-            P = SECP256K1.negate(P)
-        else:
-            print("P is even")
-        bcd_internal_key = SECP256K1.affine(Pbcd)
+        bcd_internal_key = SECP256K1.affine(P)
 
         #XXX: checkpoint 1 assert
         assert(SECP256K1.affine(Pbcd) == SECP256K1.affine(P))
 
-        return;
+        print("")
+        print("     SPENT OUTPUT     ")
         print("P pubkey " + hex(int.from_bytes(pool_pubkey[0].to_bytes(32, 'big'), 'little')))
         print("S pubkey " + hex(int.from_bytes(Pna[0].to_bytes(32, 'big'), 'little')))
+        if SECP256K1.has_even_y(pool_pubkey) == False:
+            print("parity bit 0")
+        else:
+            print("parity bit 2")
         print("U pubkey " + hex(int.from_bytes(bcd_internal_key[0].to_bytes(32, 'big'), 'little')))
 
-        #print("after removal, Pbcd pubkey " + hex(int.from_bytes(updated_pool_key[0].to_bytes(32, 'big'), 'little')))
-        #if SECP256K1.has_even_y(updated_pool_key) == False:
-        #    print("Pbcd odd")
-        #    updated_pool_key = SECP256K1.negate(bcd_internal_key)
-        #else:
-        #    print("Pbcd even")
-        #print("after removal, negated Pbcd pubkey " + hex(int.from_bytes(updated_pool_key[0].to_bytes(32, 'big'), 'little')))
+        if SECP256K1.has_even_y(bcd_internal_key) == True:
+            #print("parity even")
+            bcd_parity = 0x2
+        else:
+            #print("parity odd")
+            bcd_parity = 0x0
+        print("")
 
-        alice_pool_tree = taproot_construct(bcd_internal_key[0].to_bytes(32, 'big'), [("s1", bob_withdraw_tapscript), ("s2", caroll_withdraw_tapscript), ("s3", dave_withdraw_tapscript)])
+        print("     COMMITTED-TO OUTPUT     ")
+        alice_pool_tree = taproot_construct(bcd_internal_key[0].to_bytes(32, 'big'), [("s1", bob_withdraw_tapscript), ("s2", caroll_withdraw_tapscript), ("s3", dave_withdraw_tapscript)], withparity=bcd_parity)
         tweaked = tweak_add_pubkey(bcd_internal_key[0].to_bytes(32, 'big'), alice_pool_tree[3])
-        updated_merkle_root = taproot_tree_helper([("s1", bob_withdraw_tapscript), ("s2", caroll_withdraw_tapscript), ("s3", dave_withdraw_tapscript)])
+        updated_merkle_root = taproot_tree_helper([("s1", bob_withdraw_tapscript), ("s2", caroll_withdraw_tapscript), ("s3", dave_withdraw_tapscript)], None)
+        print("")
         #print("taproot root " + hex(int.from_bytes(updated_merkle_root[1], 'little')))
         #print("U pubkey " + hex(int.from_bytes(bcd_internal_key[0].to_bytes(32, 'big'), 'little')))
         #print("Q pubkey " + hex(int.from_bytes(tweaked[0], 'little')))
-        #print("negated " + str(tweaked[1]))
+        ##print("negated " + str(tweaked[1]))
         #print("tweak " + hex(int.from_bytes(alice_pool_tree[3], 'little')))
 
         alice_contract_output = CTxOut(bob_amount + caroll_amount + dave_amount, alice_pool_tree[0])
@@ -266,9 +251,11 @@ class CoinpoolTest(BitcoinTestFramework):
         # ANNEX_TAG + ANNEX_GROUP + length-field + group_count + ANNEX_ANYPUBKEY + length-field + anypubkey-tagged outputs + ANNEX_ANYAMOUNT + length-field + anyamount-tagged outputs TODO: a helper would be nice
         alice_annex = int(0x50).to_bytes(1, 'big') + int(0x00).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big')
         alice_withdraw_hashtype = SIGHASH_ANYPREVOUT | SIGHASH_GROUP | SIGHASH_GROUP_ANYPUBKEY | SIGHASH_GROUP_ANYAMOUNT
-        alice_withdraw_hash = TaprootSignatureHash(alice_withdraw_tx, [setup_tx_output], alice_withdraw_hashtype, 0, True, script=alice_withdraw_tapscript, annex=alice_annex, key_ver=1, group_outputs=[0, 1], group_anypubkey=[0, 1], group_anyamount=[0, 1])
+        alice_withdraw_hash = TaprootSignatureHash(alice_withdraw_tx, [setup_tx_output], alice_withdraw_hashtype, 0, True, script=alice_withdraw_tapscript, annex=alice_annex, leaf_ver=TAPROOT_LEAF_WITHPARITY, key_ver=1, group_outputs=[0, 1], group_anypubkey=[0, 1], group_anyamount=[0, 1])
         contract_sig = sign_schnorr(aggregated_contract_seckey, alice_withdraw_hash)
-        alice_control_block = bytes([pool_tree[4]["s0"][1] + pool_tree[2]]) + pool_tree[1] + pool_tree[4]["s0"][2]
+        print("committed in control block version " + hex(pool_tree[4]["s0"][1]))
+        alice_control_block = bytes([pool_tree[4]["s0"][1] + abcd_parity + pool_tree[2]]) + pool_tree[1] + pool_tree[4]["s0"][2]
+        print("alice control block " + hex(alice_control_block[0]))
         alice_withdraw_tx.wit.vtxinwit.append(CTxInWitness())
         #print("contract sig " + str(contract_sig[0]))
         alice_withdraw_tx.wit.vtxinwit[0].scriptWitness.stack = [contract_sig + int(alice_withdraw_hashtype).to_bytes(1, 'little'), alice_withdraw_tapscript, alice_control_block, alice_annex]
@@ -276,104 +263,90 @@ class CoinpoolTest(BitcoinTestFramework):
         alice_txid = node.sendrawtransaction(hexstring=alice_withdraw_tx.serialize().hex(), maxfeerate=0)
         assert alice_txid in node.getrawmempool()
 
-        ## We cancel Bob contribution from the aggregated key
-        #if SECP256K1.has_even_y(Pb) == False:
-        #    print("Pb odd")
-        #else:
-        #    print("Pb even")
-        #Pnb = SECP256K1.negate(Pb)
-        #Pcd = SECP256K1.add(bcd_internal_key, Pnb)
-        #updated_pool_key = SECP256K1.affine(Pcd)
-        #print("after removal, Pcd pubkey " + hex(int.from_bytes(updated_pool_key[0].to_bytes(32, 'big'), 'little')))
-        #if SECP256K1.has_even_y(updated_pool_key) == False:
-        #    print("Pcd odd")
-        #    updated_pool_key = SECP256K1.negate(updated_pool_key)
-        #else:
-        #    print("Pcd even")
-        #print("after removal, negated Pcd pubkey " + hex(int.from_bytes(updated_pool_key[0].to_bytes(32, 'big'), 'little')))
+        Pnb = SECP256K1.negate(Pb)
+        P = SECP256K1.add(bcd_internal_key, Pnb)
+        cd_internal_key = SECP256K1.affine(P)
 
-        #bob_pool_tree = taproot_construct(updated_pool_key[0].to_bytes(32, 'big'), [("s2", caroll_withdraw_tapscript), ("s3", dave_withdraw_tapscript)])
-        #tweaked = tweak_add_pubkey(updated_pool_key[0].to_bytes(32, 'big'), bob_pool_tree[3])
-        #updated_merkle_root = taproot_tree_helper([("s2", caroll_withdraw_tapscript), ("s3", dave_withdraw_tapscript)])
+        assert(SECP256K1.affine(Pcd) == SECP256K1.affine(P))
 
-        #bob_withdraw_tx.vin.append(CTxIn(COutPoint(int(alice_txid, 16), 1), b"", 0xffffffff))
-        #bob_contract_output = CTxOut(caroll_amount + dave_amount, bob_pool_tree[0])
-        #bob_withdraw_tx.vout.append(bob_contract_output)
-        ## ANNEX_TAG + ANNEX_GROUP + length-field + group_count + ANNEX_ANYPUBKEY + length-field + anypubkey-tagged outputs + ANNEX_ANYAMOUNT + length-field + anyamount-tagged outputs TODO: a helper would be nice
-        #bob_annex = int(0x50).to_bytes(1, 'big') + int(0x00).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big')
-        #bob_withdraw_hashtype = SIGHASH_ANYPREVOUT | SIGHASH_GROUP | SIGHASH_GROUP_ANYPUBKEY | SIGHASH_GROUP_ANYAMOUNT
-        #bob_withdraw_hash = TaprootSignatureHash(bob_withdraw_tx, [alice_contract_output], bob_withdraw_hashtype, 0, True, script=bob_withdraw_tapscript, annex=bob_annex, key_ver=1, group_outputs=[0, 1], group_anypubkey=[0, 1], group_anyamount=[0, 1])
-        #contract_sig = sign_schnorr(aggregated_contract_seckey, bob_withdraw_hash)
-        #bob_control_block = bytes([alice_pool_tree[4]["s1"][1] + alice_pool_tree[2]]) + alice_pool_tree[1] + alice_pool_tree[4]["s1"][2]
-        #bob_withdraw_tx.wit.vtxinwit.append(CTxInWitness())
-        #bob_withdraw_tx.wit.vtxinwit[0].scriptWitness.stack = [contract_sig + int(bob_withdraw_hashtype).to_bytes(1, 'little'), bob_withdraw_tapscript, bob_control_block, bob_annex]
+        if SECP256K1.has_even_y(cd_internal_key) == True:
+            cd_parity = 0x2
+        else:
+            cd_parity = 0x0
 
-        #bob_txid = node.sendrawtransaction(hexstring=bob_withdraw_tx.serialize().hex(), maxfeerate=0)
-        #assert bob_txid in node.getrawmempool()
+        bob_pool_tree = taproot_construct(cd_internal_key[0].to_bytes(32, 'big'), [("s2", caroll_withdraw_tapscript), ("s3", dave_withdraw_tapscript)], withparity=cd_parity)
+        tweaked = tweak_add_pubkey(cd_internal_key[0].to_bytes(32, 'big'), bob_pool_tree[3])
 
-        ## We cancel Caroll contribution from the aggregated key
-        #if SECP256K1.has_even_y(Pc) == False:
-        #    print("Pc odd")
-        #else:
-        #    print("Pc even")
-        #Pnc = SECP256K1.negate(Pc)
-        #Pd = SECP256K1.add(updated_pool_key, Pnc)
-        #updated_pool_key = SECP256K1.affine(Pd)
-        #print("after removal, Pd pubkey " + hex(int.from_bytes(updated_pool_key[0].to_bytes(32, 'big'), 'little')))
-        #if SECP256K1.has_even_y(updated_pool_key) == False:
-        #    print("Pd odd")
-        #    updated_pool_key = SECP256K1.negate(updated_pool_key)
-        #else:
-        #    print("Pd odd")
-        #print("after removal, negated Pd pubkey " + hex(int.from_bytes(updated_pool_key[0].to_bytes(32, 'big'), 'little')))
+        bob_contract_output = CTxOut(caroll_amount + dave_amount, bob_pool_tree[0])
+        bob_withdraw_tx.vin.append(CTxIn(COutPoint(int(alice_txid, 16), 1), b"", 0xffffffff))
+        bob_withdraw_tx.vout.append(bob_contract_output)
+        bob_annex = int(0x50).to_bytes(1, 'big') + int(0x00).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big')
+        bob_withdraw_hashtype = SIGHASH_ANYPREVOUT | SIGHASH_GROUP | SIGHASH_GROUP_ANYPUBKEY | SIGHASH_GROUP_ANYAMOUNT
+        bob_withdraw_hash = TaprootSignatureHash(bob_withdraw_tx, [alice_contract_output], bob_withdraw_hashtype, 0, True, script=bob_withdraw_tapscript, annex=alice_annex, leaf_ver=TAPROOT_LEAF_WITHPARITY, key_ver=1, group_outputs=[0, 1], group_anypubkey=[0, 1], group_anyamount=[0, 1])
+        contract_sig = sign_schnorr(aggregated_contract_seckey, bob_withdraw_hash)
+        bob_control_block = bytes([alice_pool_tree[4]["s1"][1] + bcd_parity + alice_pool_tree[2]]) + alice_pool_tree[1] + alice_pool_tree[4]["s1"][2]
+        bob_withdraw_tx.wit.vtxinwit.append(CTxInWitness())
+        bob_withdraw_tx.wit.vtxinwit[0].scriptWitness.stack = [contract_sig + int(bob_withdraw_hashtype).to_bytes(1, 'little'), bob_withdraw_tapscript, bob_control_block, bob_annex]
 
-        #caroll_pool_tree = taproot_construct(updated_pool_key[0].to_bytes(32, 'big'), [("s3", dave_withdraw_tapscript)])
-        #tweaked = tweak_add_pubkey(updated_pool_key[0].to_bytes(32, 'big'), caroll_pool_tree[3])
-        #print("Q pubkey " + hex(int.from_bytes(tweaked[0], 'little')))
-        #updated_merkle_root = taproot_tree_helper([("s3", dave_withdraw_tapscript)])
+        bob_txid = node.sendrawtransaction(hexstring=bob_withdraw_tx.serialize().hex(), maxfeerate=0)
+        assert bob_txid in node.getrawmempool()
 
-        #caroll_withdraw_tx.vin.append(CTxIn(COutPoint(int(bob_txid, 16), 1), b"", 0xffffffff))
-        #caroll_contract_output = CTxOut(dave_amount, caroll_pool_tree[0])
-        #caroll_withdraw_tx.vout.append(caroll_contract_output)
-        ## ANNEX_TAG + ANNEX_GROUP + length-field + group_count + ANNEX_ANYPUBKEY + length-field + anypubkey-tagged outputs + ANNEX_ANYAMOUNT + length-field + anyamount-tagged outputs TODO: a helper would be nice
-        #caroll_annex = int(0x50).to_bytes(1, 'big') + int(0x00).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big')
-        #caroll_withdraw_hashtype = SIGHASH_ANYPREVOUT | SIGHASH_GROUP | SIGHASH_GROUP_ANYPUBKEY | SIGHASH_GROUP_ANYAMOUNT
-        #caroll_withdraw_hash = TaprootSignatureHash(caroll_withdraw_tx, [bob_contract_output], caroll_withdraw_hashtype, 0, True, script=caroll_withdraw_tapscript, annex=caroll_annex, key_ver=1, group_outputs=[0, 1], group_anypubkey=[0, 1], group_anyamount=[0, 1])
-        #contract_sig = sign_schnorr(aggregated_contract_seckey, caroll_withdraw_hash)
-        #caroll_control_block = bytes([bob_pool_tree[4]["s2"][1] + bob_pool_tree[2]]) + bob_pool_tree[1] + bob_pool_tree[4]["s2"][2]
-        #caroll_withdraw_tx.wit.vtxinwit.append(CTxInWitness())
-        #caroll_withdraw_tx.wit.vtxinwit[0].scriptWitness.stack = [contract_sig + int(caroll_withdraw_hashtype).to_bytes(1, 'little'), caroll_withdraw_tapscript, caroll_control_block, caroll_annex]
+        Pnc = SECP256K1.negate(Pc)
+        P = SECP256K1.add(cd_internal_key, Pnc)
+        d_internal_key = SECP256K1.affine(P)
 
-        #caroll_txid = node.sendrawtransaction(hexstring=caroll_withdraw_tx.serialize().hex(), maxfeerate=0)
-        #assert caroll_txid in node.getrawmempool()
+        assert(SECP256K1.affine(Pd2) == SECP256K1.affine(P))
 
-        ## Dave realize a key-path spend
-        #dave_exit_tx = CTransaction()
-        #dave_exit_tx.vin.append(CTxIn(COutPoint(int(caroll_txid, 16), 1), b"", 0xffffffff))
-        #dave_exit_tx.vout.append(CTxOut(dave_amount, dave_exit_scriptpubkey))
-        #dave_exit_hashtype = SIGHASH_ALL
-        #dave_exit_hash = TaprootSignatureHash(dave_exit_tx, [caroll_contract_output], dave_exit_hashtype, 0, True)
+        if SECP256K1.has_even_y(d_internal_key) == True:
+            d_parity = 0x2
+        else:
+            d_parity = 0x0
 
-        #dave_pubkey = compute_xonly_pubkey(dave_pool_seckey)
-        #tweaked_dave_seckey = tweak_add_privkey(dave_pool_seckey, caroll_pool_tree[3])
-        #tweaked_pubkey = compute_xonly_pubkey(tweaked_dave_seckey)
+        caroll_pool_tree = taproot_construct(d_internal_key[0].to_bytes(32, 'big'), [("s3", dave_withdraw_tapscript)], withparity=d_parity)
+        tweaked = tweak_add_pubkey(d_internal_key[0].to_bytes(32, 'big'), caroll_pool_tree[3])
+
+        caroll_contract_output = CTxOut(dave_amount, caroll_pool_tree[0])
+        caroll_withdraw_tx.vin.append(CTxIn(COutPoint(int(bob_txid, 16), 1), b"", 0xffffffff))
+        caroll_withdraw_tx.vout.append(caroll_contract_output)
+        caroll_annex = int(0x50).to_bytes(1, 'big') + int(0x00).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big') + int(0x01).to_bytes(1, 'big') + int(0x02).to_bytes(1, 'big')
+        caroll_withdraw_hashtype = SIGHASH_ANYPREVOUT | SIGHASH_GROUP | SIGHASH_GROUP_ANYPUBKEY | SIGHASH_GROUP_ANYAMOUNT
+        caroll_withdraw_hash = TaprootSignatureHash(caroll_withdraw_tx, [bob_contract_output], caroll_withdraw_hashtype, 0, True, script=caroll_withdraw_tapscript, annex=caroll_annex, leaf_ver=TAPROOT_LEAF_WITHPARITY, key_ver=1, group_outputs=[0, 1], group_anypubkey=[0, 1], group_anyamount=[0, 1])
+        contract_sig = sign_schnorr(aggregated_contract_seckey, caroll_withdraw_hash)
+        caroll_control_block = bytes([bob_pool_tree[4]["s2"][1] + cd_parity + bob_pool_tree[2]]) + bob_pool_tree[1] + bob_pool_tree[4]["s2"][2]
+        caroll_withdraw_tx.wit.vtxinwit.append(CTxInWitness())
+        caroll_withdraw_tx.wit.vtxinwit[0].scriptWitness.stack = [contract_sig + int(caroll_withdraw_hashtype).to_bytes(1, 'little'), caroll_withdraw_tapscript, caroll_control_block, caroll_annex]
+
+        caroll_txid = node.sendrawtransaction(hexstring=caroll_withdraw_tx.serialize().hex(), maxfeerate=0)
+        assert caroll_txid in node.getrawmempool()
+
+        # Dave realize a key-path spend
+        dave_exit_tx = CTransaction()
+        dave_exit_tx.vin.append(CTxIn(COutPoint(int(caroll_txid, 16), 1), b"", 0xffffffff))
+        dave_exit_tx.vout.append(CTxOut(dave_amount, dave_exit_scriptpubkey))
+        dave_exit_hash = TaprootSignatureHash(dave_exit_tx, [caroll_contract_output], 0, 0, False)
+        #print("dave has)
+
+        tweaked_dave_seckey = tweak_add_privkey(dave_pool_seckey, caroll_pool_tree[3])
+        tweaked_dave_pubkey = compute_xonly_pubkey(tweaked_dave_seckey)[0]
+
         #xd = int.from_bytes(dave_pool_pubkey, 'big')
         #Pd = SECP256K1.lift_x(xd)
         #affine_Pd = SECP256K1.affine(Pd)
-        #print("Pd pubkey " + hex(int.from_bytes(affine_Pd[0].to_bytes(32, 'big'), 'little')))
+        print("tweaked pubkey " + hex(int.from_bytes(tweaked_dave_pubkey, 'little')))
+        #print("tweaked pubkey " + hex(tweaked_dave_pubkey[0]))
 
-        ##print("dave pubkey " + hex(int.from_bytes(dave_pubkey[0], 'little')))
+        print("dave pubkey " + hex(Pd[0]))
+        print("internal pubkey " + hex(d_internal_key[0]))
         #print("tweaked pubkey " + hex(int.from_bytes(tweaked_pubkey[0], 'little')))
         #print("")
-        #keypath_sig = sign_schnorr(dave_pool_seckey, dave_exit_hash)
-        #dave_exit_tx.wit.vtxinwit.append(CTxInWitness())
-        #dave_exit_tx.wit.vtxinwit[0].scriptWitness.stack = [keypath_sig]
+        keypath_sig = sign_schnorr(tweaked_dave_seckey, dave_exit_hash)
+        dave_exit_tx.wit.vtxinwit.append(CTxInWitness())
+        dave_exit_tx.wit.vtxinwit[0].scriptWitness.stack = [keypath_sig]
 
-        #dave_txid = node.sendrawtransaction(hexstring=dave_exit_tx.serialize().hex(), maxfeerate=0)
-        #assert dave_txid in node.getrawmempool()
+        dave_txid = node.sendrawtransaction(hexstring=dave_exit_tx.serialize().hex(), maxfeerate=0)
+        assert dave_txid in node.getrawmempool()
 
 if __name__ == '__main__':
-    #TODO: implement even-only operations
     #TODO: anyprevout -> anyscript
     #TODO: pass control block
     #TODO: generate_players() + withdraw()

@@ -654,7 +654,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
 
                     LogPrintf("New measurement size %d!\n", vchPubKey.size());
 
-                    if (vchPubKey.size() != 33) {
+                    if (vchPubKey.size() != 32) {
                         LogPrintf("Faulty subtraction point size!\n");
                         return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
                     }
@@ -1944,7 +1944,7 @@ bool GenericTransactionSignatureChecker<T>::CheckSequence(const CScriptNum& nSeq
 }
 
 template <class T>
-bool GenericTransactionSignatureChecker<T>::CheckMerkleUpdate(const std::vector<unsigned char>& control, unsigned int out_pos, const std::vector<unsigned char>& point, const internal_evenness) const
+bool GenericTransactionSignatureChecker<T>::CheckMerkleUpdate(const std::vector<unsigned char>& control, unsigned int out_pos, const std::vector<unsigned char>& point) const
 {
     //! The internal pubkey (x-only, so no Y coordinate parity).
     XOnlyPubKey p{uint256(std::vector<unsigned char>(control.begin() + 1, control.begin() + TAPROOT_CONTROL_BASE_SIZE))};
@@ -1954,15 +1954,16 @@ bool GenericTransactionSignatureChecker<T>::CheckMerkleUpdate(const std::vector<
     XOnlyPubKey u;
     LogPrintf("P pubkey %s\n", p.ToString());
     LogPrintf("S pubkey %s\n", s.ToString());
+    int parity_bit = control[0] & TAPROOT_LEAF_PARITY;
+    int new_parity_bit = 1;
     try {
-        u = p.UpdateInternalKey(s).value();
+        LogPrintf("internal key is %d\n", parity_bit);
+        u = p.UpdateInternalKey(s, parity_bit, &new_parity_bit).value();
     } catch (const std::bad_optional_access& e) {
         return false;
     }
-
+    LogPrintf("new parity bit %d\n", new_parity_bit);
     LogPrintf("U pubkey %s\n", u.ToString());
-
-    return false;
 
     //! The first control node is made the new tapleaf hash.
     //! TODO: what if there is no control node ?
@@ -1985,14 +1986,10 @@ bool GenericTransactionSignatureChecker<T>::CheckMerkleUpdate(const std::vector<
         LogPrintf("new merkle root %s\n", merkle_root.ToString());
         LogPrintf("U pubkey %s\n", u.ToString());
         LogPrintf("Q pubkey %s\n", q.ToString());
-        //! TODO modify MERKLESUB design to accept a 33-byte point with a 1-byte to signal parity
-        bool parity_ret = q.CheckTapTweak(u, merkle_root, true);
-        bool no_parity_ret = q.CheckTapTweak(u, merkle_root, false);
-        if (!parity_ret && !no_parity_ret) {
-            return false;
-        }
+        return (q.CheckTapTweak(u, merkle_root, true, &new_parity_bit) || q.CheckTapTweak(u, merkle_root, false, &new_parity_bit));
     }
-    return true;
+    //XXX: fail if witness version is superior to 1
+    return false;
 }
 
 // explicit instantiation
@@ -2177,9 +2174,18 @@ static bool VerifyTaprootCommitment(const std::vector<unsigned char>& control, c
     //! The output pubkey (taken from the scriptPubKey).
     const XOnlyPubKey q{uint256(program)};
     // Compute the Merkle root from the leaf and the provided path.
+    //TODO: adjust ComputeTaprootMerkleRoot
     const uint256 merkle_root = ComputeTaprootMerkleRoot(control, tapleaf_hash, 0);
     // Verify that the output pubkey matches the tweaked internal pubkey, after correcting for parity.
-    return q.CheckTapTweak(p, merkle_root, control[0] & 1);
+    bool ret;
+    if ((control[0] & TAPROOT_LEAF_WITHPARITY) == TAPROOT_LEAF_WITHPARITY) {
+        int internal_parity = (control[0] & TAPROOT_LEAF_PARITY) == TAPROOT_LEAF_PARITY ? 0x2 : 0x0;
+        LogPrintf("internal parity %d\n", internal_parity);
+        ret = q.CheckTapTweak(p, merkle_root, control[0] & 1, &internal_parity);
+    } else {
+        ret = q.CheckTapTweak(p, merkle_root, control[0] & 1, nullptr);
+    }
+    return ret;
 }
 
 static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, const std::vector<unsigned char>& program, unsigned int flags, const BaseSignatureChecker& checker, StatePair* bundle, ScriptError* serror, bool is_p2sh)
@@ -2248,13 +2254,20 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
             if (control.size() < TAPROOT_CONTROL_BASE_SIZE || control.size() > TAPROOT_CONTROL_MAX_SIZE || ((control.size() - TAPROOT_CONTROL_BASE_SIZE) % TAPROOT_CONTROL_NODE_SIZE) != 0) {
                 return set_error(serror, SCRIPT_ERR_TAPROOT_WRONG_CONTROL_SIZE);
             }
-            execdata.m_tapleaf_hash = ComputeTapleafHash(control[0] & TAPROOT_LEAF_MASK, exec_script, control[0] & TAPROOT_INTERNAL_MASK);
+            LogPrintf("control %d\n", control[0] & TAPROOT_LEAF_WITHPARITY);
+            if ((control[0] & TAPROOT_LEAF_WITHPARITY) == TAPROOT_LEAF_WITHPARITY) {
+                execdata.m_tapleaf_hash = ComputeTapleafHash(control[0] & TAPROOT_WITHPARITY_MASK, exec_script);
+                LogPrintf("tapleaf hash %s\n", execdata.m_tapleaf_hash.ToString());
+            } else {
+                execdata.m_tapleaf_hash = ComputeTapleafHash(control[0] & TAPROOT_LEAF_MASK, exec_script);
+            }
+            LogPrintf("VerifyTaprootCommitment !\n");
             if (!VerifyTaprootCommitment(control, program, execdata.m_tapleaf_hash, &execdata.m_internal_key, &execdata.m_control)) {
                 return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
             }
             LogPrintf("Taproot commitment is okay !\n");
             execdata.m_tapleaf_hash_init = true;
-            if ((control[0] & TAPROOT_LEAF_MASK) == TAPROOT_LEAF_TAPSCRIPT) {
+            if ((control[0] & TAPROOT_LEAF_MASK) == TAPROOT_LEAF_TAPSCRIPT || (control[0] & TAPROOT_WITHPARITY_MASK) == TAPROOT_LEAF_WITHPARITY) {
                 // Tapscript (leaf version 0xc0)
                 execdata.m_validation_weight_left = ::GetSerializeSize(witness.stack, PROTOCOL_VERSION) + VALIDATION_WEIGHT_OFFSET;
                 execdata.m_validation_weight_left_init = true;

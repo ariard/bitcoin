@@ -263,9 +263,10 @@ static constexpr size_t WITNESS_V0_KEYHASH_SIZE = 20;
 static constexpr size_t WITNESS_V1_TAPROOT_SIZE = 32;
 
 static constexpr uint8_t TAPROOT_LEAF_MASK = 0xfe;
+static constexpr uint8_t TAPROOT_WITHPARITY_MASK = 0xfc;
+static constexpr uint8_t TAPROOT_LEAF_PARITY = 0x2;
 static constexpr uint8_t TAPROOT_LEAF_TAPSCRIPT = 0xc0;
-static constexpr uint8_t TAPROOT_ODD_INTERNAL = 0x20;
-static constexpr uint8_t TAPROOT_EVEN_INTERNAL = 0x30;
+static constexpr uint8_t TAPROOT_LEAF_WITHPARITY = 0x20;
 static constexpr size_t TAPROOT_CONTROL_BASE_SIZE = 33;
 static constexpr size_t TAPROOT_CONTROL_NODE_SIZE = 32;
 static constexpr size_t TAPROOT_CONTROL_MAX_NODE_COUNT = 128;

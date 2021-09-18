@@ -133,7 +133,7 @@ static void secp256k1_keypair_save(secp256k1_keypair *keypair, const secp256k1_s
     secp256k1_pubkey_save((secp256k1_pubkey *)&keypair->data[32], pk);
 }
 
-int secp256k1_xonly_pubkey_add(const secp256k1_context* ctx, secp256k1_xonly_pubkey *internal_pubkey, const secp256k1_xonly_pubkey *update_pubkey) {
+int secp256k1_xonly_pubkey_add(const secp256k1_context* ctx, secp256k1_xonly_pubkey *internal_pubkey, const secp256k1_xonly_pubkey *update_pubkey, int old_parity_bit, int *new_parity_bit) {
     secp256k1_ge internal_pk;
     secp256k1_ge update_pk;
     secp256k1_gej sj;
@@ -144,10 +144,22 @@ int secp256k1_xonly_pubkey_add(const secp256k1_context* ctx, secp256k1_xonly_pub
         || !secp256k1_xonly_pubkey_load(ctx, &update_pk, update_pubkey))
         return 0;
 
+    if (old_parity_bit == 0 && !secp256k1_fe_is_odd(&internal_pk.y)) {
+        secp256k1_ge_neg(&internal_pk, &internal_pk);
+    } else if (old_parity_bit == 2 && secp256k1_fe_is_odd(&internal_pk.y)) {
+        secp256k1_ge_neg(&internal_pk, &internal_pk);
+    }
+
     secp256k1_gej_set_ge(&ij, &internal_pk);
     secp256k1_gej_set_ge(&sj, &update_pk);
     secp256k1_gej_add_var(&uj, &ij, &sj, NULL);
     secp256k1_ge_set_gej(&internal_pk, &uj);
+
+    if (secp256k1_fe_is_odd(&internal_pk.y)) {
+        *new_parity_bit = 0;
+    } else {
+        *new_parity_bit = 2;
+    }
 
     secp256k1_xonly_pubkey_save(internal_pubkey, &internal_pk);
     return 1;
