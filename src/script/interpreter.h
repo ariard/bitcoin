@@ -359,7 +359,7 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* error = nullptr);
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = nullptr);
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, StatePair* group = nullptr, ScriptError* serror = nullptr);
-bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata);
+bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata, bool standard);
 
 size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags);
 

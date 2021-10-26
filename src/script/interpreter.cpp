@@ -1908,9 +1908,10 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
     return k;
 }
 
-bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata)
+bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata, bool standard)
 {
     const int annex_len = annex.size();
+    uint64_t tag_order = 0;
     bool group_present = false;
     VectorReader readable_annex(SER_NETWORK, INIT_PROTO_VERSION, annex, 0);
     while (!readable_annex.empty()) {
@@ -1922,6 +1923,10 @@ bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& e
 
         /* Allow 8192 2-byte tags to be encoded */
         const uint64_t nTagField = nTagHigherMask * 64 + (nTagLowerMask & 0x3F);
+
+        /* Policy rule - Tags should be in order */
+        if (tag_order > nTagField) return false;
+        tag_order = nTagField;
 
         uint64_t nTagLength = 0;
         if ((nTagLowerMask & 0xC0) == 0) {
@@ -1950,6 +1955,12 @@ bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& e
                     execdata.m_group->first = execdata.m_group->second;
                     execdata.m_group->second += nGroupCount;
                 }
+                break;
+            }
+            default:
+            {
+                /* Policy rule - No unknown tags present */
+                if (standard) return false;
                 break;
             }
         }
@@ -2018,7 +2029,7 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
             execdata.m_annex_hash = (CHashWriter(SER_GETHASH, 0) << annex).GetSHA256();
             execdata.m_annex_present = true;
             if (flags & SCRIPT_VERIFY_ANNEX) {
-                if (!VerifyAnnex(annex, execdata)) {
+                if (!VerifyAnnex(annex, execdata, false)) {
                     return set_error(serror, SCRIPT_ERR_ANNEX_WRONG_FORMAT);
                 }
             }
