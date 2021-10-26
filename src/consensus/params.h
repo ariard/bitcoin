@@ -20,8 +20,9 @@ enum BuriedDeployment : int16_t
     DEPLOYMENT_CSV,
     DEPLOYMENT_SEGWIT,
     DEPLOYMENT_ANYPREVOUT,
+    DEPLOYMENT_ANNEX,
 };
-constexpr bool ValidDeployment(BuriedDeployment dep) { return DEPLOYMENT_HEIGHTINCB <= dep && dep <= DEPLOYMENT_ANYPREVOUT; }
+constexpr bool ValidDeployment(BuriedDeployment dep) { return DEPLOYMENT_HEIGHTINCB <= dep && dep <= DEPLOYMENT_ANNEX; }
 
 enum DeploymentPos : uint16_t
 {
@@ -87,6 +88,8 @@ struct Params {
     /** Block height for ANYPREVOUT (BIP118/pr943) */
     int AnyprevoutHeight = std::numeric_limits<int>::max();
 
+    /** Block height at which group (BIPYYY) becomes active */
+    int AnnexHeight = std::numeric_limits<int>::max();
     /** Don't warn about unknown BIP 9 activations below this height.
      * This prevents us from warning about the CSV and segwit activations. */
     int MinBIP9WarningHeight;
@@ -132,6 +135,8 @@ struct Params {
             return SegwitHeight;
         case DEPLOYMENT_ANYPREVOUT:
             return AnyprevoutHeight;
+        case DEPLOYMENT_ANNEX:
+            return AnnexHeight;
         } // no default case, so the compiler can warn about missing cases
         return std::numeric_limits<int>::max();
     }

@@ -1686,6 +1686,11 @@ static unsigned int GetBlockScriptFlags(const CBlockIndex* pindex, const Consens
         flags |= SCRIPT_VERIFY_NULLDUMMY;
     }
 
+    // Enforce annex and sighash_group verification (BIPXXX/BIPYYY)
+    if (DeploymentActiveAt(*pindex, consensusparams, Consensus::DEPLOYMENT_ANNEX)) {
+        flags |= SCRIPT_VERIFY_ANNEX;
+    }
+
     return flags;
 }
 

@@ -33,6 +33,8 @@ std::string DeploymentName(Consensus::BuriedDeployment dep)
         return "segwit";
     case Consensus::DEPLOYMENT_ANYPREVOUT:
         return "anyprevout";
+    case Consensus::DEPLOYMENT_ANNEX:
+        return "annex";
     } // no default case, so the compiler can warn about missing cases
     return "";
 }
