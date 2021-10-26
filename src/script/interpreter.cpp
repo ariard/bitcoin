@@ -1551,6 +1551,7 @@ bool SignatureHashSchnorr(uint256& hash_out, const ScriptExecutionData& execdata
             break;
         case 0x41: case 0x42: case 0x43:
         case 0xc1: case 0xc2: case 0xc3:
+        case 0x8:
             if (keyversion == KeyVersion::ANYPREVOUT) {
                 break;
             } else {
@@ -1572,6 +1573,16 @@ bool SignatureHashSchnorr(uint256& hash_out, const ScriptExecutionData& execdata
     }
     if (output_type == SIGHASH_ALL) {
         ss << cache.m_outputs_single_hash;
+    }
+
+    if ((output_type & SIGHASH_GROUP) == SIGHASH_GROUP) {
+        // Verify the output group bounds
+        if (execdata.m_group->first == execdata.m_group->second || execdata.m_group->second >= tx_to.vout.size()) return false;
+
+        for (unsigned int out_pos = execdata.m_group->first; out_pos < execdata.m_group->second + 1; out_pos++) {
+            ss << tx_to.vout[out_pos].scriptPubKey;
+            ss << tx_to.vout[out_pos].nValue;
+        }
     }
 
     // Data about the input/prevout being spent
@@ -1900,6 +1911,7 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
 bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata)
 {
     const int annex_len = annex.size();
+    bool group_present = false;
     VectorReader readable_annex(SER_NETWORK, INIT_PROTO_VERSION, annex, 0);
     while (!readable_annex.empty()) {
 
@@ -1927,9 +1939,26 @@ bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& e
 
         switch (nTagField)
         {
+            /* Enforce ANNEX_GROUP tag field semantic */
+            case ANNEX_GROUP:
+            {
+                group_present = true;
+                /* Interpret the data field as a VarInt */
+                uint64_t nGroupCount = 0;
+                nTagData >> VARINT(nGroupCount);
+                if (nGroupCount > 0) {
+                    execdata.m_group->first = execdata.m_group->second;
+                    execdata.m_group->second += nGroupCount;
+                }
+                break;
+            }
         }
     }
 
+    /* If the ANNEX_GROUP tag field is not present, set group state pair to start := end */
+    if (!group_present) {
+        execdata.m_group->first = execdata.m_group->second;
+    }
     return true;
 }
 
@@ -1948,12 +1977,13 @@ static bool VerifyTaprootCommitment(const std::vector<unsigned char>& control, c
     return q.CheckTapTweak(p, merkle_root, control[0] & 1);
 }
 
-static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, const std::vector<unsigned char>& program, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror, bool is_p2sh)
+static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, const std::vector<unsigned char>& program, unsigned int flags, const BaseSignatureChecker& checker, StatePair* group, ScriptError* serror, bool is_p2sh)
 {
     CScript exec_script; //!< Actually executed script (last stack item in P2WSH; implied P2PKH script in P2WPKH; leaf script in P2TR)
     Span<const valtype> stack{witness.stack};
     ScriptExecutionData execdata;
 
+    execdata.m_group = group;
     if (witversion == 0) {
         if (program.size() == WITNESS_V0_SCRIPTHASH_SIZE) {
             // BIP141 P2WSH: 32-byte witness v0 program (which encodes SHA256(script))
@@ -2036,8 +2066,9 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
     // There is intentionally no return statement here, to be able to use "control reaches end of non-void function" warnings to detect gaps in the logic above.
 }
 
-bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
+bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, StatePair* group, ScriptError* serror)
 {
+
     static const CScriptWitness emptyWitness;
     if (witness == nullptr) {
         witness = &emptyWitness;
@@ -2076,7 +2107,7 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
                 // The scriptSig must be _exactly_ CScript(), otherwise we reintroduce malleability.
                 return set_error(serror, SCRIPT_ERR_WITNESS_MALLEATED);
             }
-            if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, flags, checker, serror, /* is_p2sh */ false)) {
+            if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, flags, checker, group, serror, /* is_p2sh */ false)) {
                 return false;
             }
             // Bypass the cleanstack check at the end. The actual stack is obviously not clean
@@ -2121,7 +2152,7 @@ bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const C
                     // reintroduce malleability.
                     return set_error(serror, SCRIPT_ERR_WITNESS_MALLEATED_P2SH);
                 }
-                if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, flags, checker, serror, /* is_p2sh */ true)) {
+                if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, flags, checker, group, serror, /* is_p2sh */ true)) {
                     return false;
                 }
                 // Bypass the cleanstack check at the end. The actual stack is obviously not clean

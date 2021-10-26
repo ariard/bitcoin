@@ -30,9 +30,10 @@ enum
     SIGHASH_ANYONECANPAY = 0x80,
     SIGHASH_ANYPREVOUT = 0x40,
     SIGHASH_ANYPREVOUTANYSCRIPT = 0xc0,
+    SIGHASH_GROUP = 0x8,
 
     SIGHASH_DEFAULT = 0, //!< Taproot only; implied when sighash byte is missing, and equivalent to SIGHASH_ALL
-    SIGHASH_OUTPUT_MASK = 3,
+    SIGHASH_OUTPUT_MASK = 0xb,
     SIGHASH_INPUT_MASK = 0xc0,
 };
 
@@ -206,6 +207,8 @@ struct VersionedXOnlyPubKey
     XOnlyPubKey pubkey;
 };
 
+typedef std::pair<size_t, size_t> StatePair;
+
 struct ScriptExecutionData
 {
     //! Whether m_tapleaf_hash is initialized.
@@ -224,6 +227,9 @@ struct ScriptExecutionData
     bool m_annex_present;
     //! Hash of the annex data.
     uint256 m_annex_hash;
+
+    //! Whether a group is present.
+    StatePair* m_group;
 
     //! Whether m_validation_weight_left is initialized.
     bool m_validation_weight_left_init = false;
@@ -352,7 +358,7 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
 
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* error = nullptr);
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = nullptr);
-bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
+bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, StatePair* group = nullptr, ScriptError* serror = nullptr);
 bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata);
 
 size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags);
