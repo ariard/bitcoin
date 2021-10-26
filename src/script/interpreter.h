@@ -145,6 +145,13 @@ enum
 
     // Validating ANYPREVOUT public keys
     SCRIPT_VERIFY_ANYPREVOUT = (1U << 21),
+
+    // Verify annex. See BIPXXX/BIPYYY for details.
+    SCRIPT_VERIFY_ANNEX = (1U << 22),
+
+    // Constants to point to the highest flag in use. Add new flags above this line.
+    //
+    SCRIPT_VERIFY_END_MARKER
 };
 
 bool CheckSignatureEncoding(const std::vector<unsigned char> &vchSig, unsigned int flags, ScriptError* serror);
@@ -346,6 +353,7 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* error = nullptr);
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = nullptr);
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
+bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata);
 
 size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags);
 

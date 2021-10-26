@@ -10,6 +10,7 @@
 #include <crypto/sha256.h>
 #include <pubkey.h>
 #include <script/script.h>
+#include <streams.h>
 #include <uint256.h>
 
 typedef std::vector<unsigned char> valtype;
@@ -1896,6 +1897,42 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
     return k;
 }
 
+bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata)
+{
+    const int annex_len = annex.size();
+    VectorReader readable_annex(SER_NETWORK, INIT_PROTO_VERSION, annex, 0);
+    while (!readable_annex.empty()) {
+
+        uint64_t nTagHigherMask = 0;
+        readable_annex >> VARINT(nTagHigherMask);
+        uint8_t nTagLowerMask = 0;
+        readable_annex >> nTagLowerMask;
+
+        /* Allow 8192 2-byte tags to be encoded */
+        const uint64_t nTagField = nTagHigherMask * 64 + (nTagLowerMask & 0x3F);
+
+        uint64_t nTagLength = 0;
+        if ((nTagLowerMask & 0xC0) == 0) {
+            readable_annex >> VARINT(nTagLength);
+        } else {
+            /* Special-case for tag length 1, 2, 3 bytes. Save 1 byte of tag length */
+            nTagLength = ((nTagLowerMask & 0xC0) >> 6);
+        }
+        /* Verify the annex is not short - end of data before reading is finished */
+        if (readable_annex.size() < nTagLength) {
+            return false;
+        }
+        CDataStream nTagData(SER_NETWORK, PROTOCOL_VERSION);
+        readable_annex.read((char *)nTagData.data(), nTagLength);
+
+        switch (nTagField)
+        {
+        }
+    }
+
+    return true;
+}
+
 static bool VerifyTaprootCommitment(const std::vector<unsigned char>& control, const std::vector<unsigned char>& program, uint256& tapleaf_hash, std::optional<XOnlyPubKey>* internal_key)
 {
     assert(control.size() >= TAPROOT_CONTROL_BASE_SIZE);
@@ -1950,6 +1987,11 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
             const valtype& annex = SpanPopBack(stack);
             execdata.m_annex_hash = (CHashWriter(SER_GETHASH, 0) << annex).GetSHA256();
             execdata.m_annex_present = true;
+            if (flags & SCRIPT_VERIFY_ANNEX) {
+                if (!VerifyAnnex(annex, execdata)) {
+                    return set_error(serror, SCRIPT_ERR_ANNEX_WRONG_FORMAT);
+                }
+            }
         } else {
             execdata.m_annex_present = false;
         }
