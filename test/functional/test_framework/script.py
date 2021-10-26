@@ -607,8 +607,10 @@ SIGHASH_ANYONECANPAY = 0x80
 SIGHASH_ANYPREVOUT = 0x40
 SIGHASH_ANYPREVOUTANYSCRIPT = 0xc0
 
+SIGHASH_GROUP = 0x8
+
 SIGHASH_INMASK = 0xc0
-SIGHASH_OUTMASK = 0x03
+SIGHASH_OUTMASK = 0xb
 
 def FindAndDelete(script, sig):
     """Consensus critical, see FindAndDelete() in Satoshi codebase"""
@@ -750,7 +752,7 @@ class TestFrameworkScript(unittest.TestCase):
         for value in values:
             self.assertEqual(CScriptNum.decode(CScriptNum.encode(CScriptNum(value))), value)
 
-def TaprootSignatureHash(txTo, spent_utxos, hash_type, input_index = 0, scriptpath = False, script = CScript(), codeseparator_pos = -1, annex = None, leaf_ver = LEAF_VERSION_TAPSCRIPT, key_ver = KEY_VERSION_TAPROOT):
+def TaprootSignatureHash(txTo, spent_utxos, hash_type, input_index = 0, scriptpath = False, script = CScript(), codeseparator_pos = -1, annex = None, leaf_ver = LEAF_VERSION_TAPSCRIPT, key_ver = KEY_VERSION_TAPROOT, group_outputs = None):
     assert (len(txTo.vin) == len(spent_utxos))
     assert key_ver == KEY_VERSION_TAPROOT or key_ver == KEY_VERSION_ANYPREVOUT
     assert key_ver != KEY_VERSION_ANYPREVOUT or scriptpath
@@ -769,6 +771,10 @@ def TaprootSignatureHash(txTo, spent_utxos, hash_type, input_index = 0, scriptpa
         ss += sha256(b"".join(struct.pack("<I", i.nSequence) for i in txTo.vin))
     if out_type == SIGHASH_ALL:
         ss += sha256(b"".join(o.serialize() for o in txTo.vout))
+    if (out_type & SIGHASH_GROUP) == SIGHASH_GROUP:
+        for out_pos in group_outputs:
+            ss += ser_string(txTo.vout[out_pos].scriptPubKey)
+            ss += struct.pack("<q", txTo.vout[out_pos].nValue)
     spend_type = 0
     if annex is not None:
         spend_type |= 1
