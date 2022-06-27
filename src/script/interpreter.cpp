@@ -10,6 +10,7 @@
 #include <crypto/sha256.h>
 #include <pubkey.h>
 #include <script/script.h>
+#include <streams.h>
 #include <uint256.h>
 
 typedef std::vector<unsigned char> valtype;
@@ -1851,6 +1852,70 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
     return k;
 }
 
+bool VerifyAnnex(const std::vector<unsigned char>& annex_stack, ScriptExecutionData& execdata)
+{
+    CDataStream annex(MakeByteSpan(annex_stack), ANNEX_SER_TYPE, ANNEX_SER_VERSION);
+
+    /* Pop annex tag */
+    uint8_t annex_tag;
+    annex.read(AsWritableBytes(Span{&annex_tag, 1}));
+    assert(annex_tag == ANNEX_TAG);
+
+    /* Annex record are encoded as:
+     * `VarInt` + 1 bytes: type
+     * `VarInt` OR 0 bytes: length
+     * `length`-bytes: value
+     */
+    while (!annex_stack.empty()) {
+
+        /* `VarInt`-bytes to encode the higher-mask type
+         * 1-byte to encode the lower-mask type
+         * 8192 records with 2 bytes.
+         * 1056767 records with 3 bytes.
+         * 40456331200 records with 4 bytes.
+         * See `VarIntMode` comment in serialize.h for more.
+         */
+        uint64_t nRecordHigherMask = 0;
+        annex >> VARINT(nRecordHigherMask);
+        uint8_t nRecordLowerMask;
+        annex.read(AsWritableBytes(Span{&nRecordLowerMask, 1}));
+
+        const uint64_t nRecordType = nRecordHigherMask * 64 + (nRecordLowerMask & 0x3F);
+        uint64_t nRecordLength = 0;
+
+        /* `VarInt`-bytes to encode the record length.
+         * 1-byte for 4 to 130 bytes of length.
+         * 2-byte for 131 to 16514 bytes of length.
+         * 3-byte for 16515 to 2113666 bytes of length.
+         * Special-case for record value of length 0, 1, 2, 3, bytes. Save 1 byte of record length.
+         */
+        if ((nRecordLowerMask & 0xc0) == 0) {
+            annex >> VARINT(nRecordLength);
+            nRecordLength += 3;
+        } else {
+            /* Special-case for record value of length 0, 1, 2, 3 bytes. Save 1 byte of record length */
+            nRecordLength = ((nRecordLowerMask & 0xc0) >> 6);
+        }
+
+        /* Consensus rule : the annex is not short - end of data
+         * before reading is finished */
+        if (annex.size() < nRecordLength)
+            return false;
+
+        std::vector<unsigned char> vRecordValue;
+        vRecordValue.resize(nRecordLength);
+        annex.read(AsWritableBytes(Span{&vRecordValue, nRecordLength}));
+
+        switch (nRecordType) {
+            /* Consensus rule : record value must make sense, per
+             * the tag spec */
+            default:
+                return true;
+        }
+    }
+    return true;
+}
+
 static bool VerifyTaprootCommitment(const std::vector<unsigned char>& control, const std::vector<unsigned char>& program, const uint256& tapleaf_hash)
 {
     assert(control.size() >= TAPROOT_CONTROL_BASE_SIZE);
@@ -1904,6 +1969,12 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
             const valtype& annex = SpanPopBack(stack);
             execdata.m_annex_hash = (CHashWriter(SER_GETHASH, 0) << annex).GetSHA256();
             execdata.m_annex_present = true;
+            // BIPXXX: verify annex
+            if (flags & SCRIPT_VERIFY_ANNEX) {
+                if (!VerifyAnnex(annex, execdata)) {
+                    return set_error(serror, SCRIPT_ERR_ANNEX_WRONG_FORMAT);
+                }
+            }
         } else {
             execdata.m_annex_present = false;
         }
