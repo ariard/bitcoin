@@ -153,6 +153,9 @@ enum : uint32_t {
     // Making ANYPREVOUT public key versions (in BIP 342 scripts) non-standard
     SCRIPT_VERIFY_DISCOURAGE_ANYPREVOUT = (1U << 23),
 
+    // Verify the annex reserved space
+    SCRIPT_VERIFY_ANNEX = (1U << 24),
+
     // Constants to point to the highest flag in use. Add new flags above this line.
     //
     SCRIPT_VERIFY_END_MARKER
@@ -395,6 +398,7 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* error = nullptr);
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = nullptr);
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
+bool VerifyAnnex(const std::vector<unsigned char>& annex, ScriptExecutionData& execdata);
 
 size_t CountWitnessSigOps(const CScript& scriptSig, const CScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags);
 
@@ -404,5 +408,11 @@ int FindAndDelete(CScript& script, const CScript& b);
 
 template <typename T>
 bool SignatureHashSchnorr(uint256& hash_out, ScriptExecutionData& execdata, const T& tx_to, uint32_t in_pos, uint8_t hash_type, SigVersion sigversion, KeyVersion keyversion, const PrecomputedTransactionData& cache, MissingDataBehavior mdb);
+
+/// SerType used to serialize parameters in GCS filter encoding.
+static constexpr int ANNEX_SER_TYPE = SER_NETWORK;
+
+/// Protocol version used to serialize parameters in GCS filter encoding.
+static constexpr int ANNEX_SER_VERSION = 0;
 
 #endif // BITCOIN_SCRIPT_INTERPRETER_H
