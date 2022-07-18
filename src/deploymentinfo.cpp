@@ -31,6 +31,8 @@ std::string DeploymentName(Consensus::BuriedDeployment dep)
         return "csv";
     case Consensus::DEPLOYMENT_SEGWIT:
         return "segwit";
+    case Consensus::DEPLOYMENT_ANNEX:
+        return "annex";
     } // no default case, so the compiler can warn about missing cases
     return "";
 }

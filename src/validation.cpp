@@ -1958,6 +1958,11 @@ static unsigned int GetBlockScriptFlags(const CBlockIndex& block_index, const Ch
         flags |= SCRIPT_VERIFY_NULLDUMMY;
     }
 
+    // Enforce annex verification (BIPXXX)
+    if (DeploymentActiveAt(block_index, chainman, Consensus::DEPLOYMENT_ANNEX)) {
+        flags |= SCRIPT_VERIFY_ANNEX;
+    }
+
     return flags;
 }
 

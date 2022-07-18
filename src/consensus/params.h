@@ -24,6 +24,7 @@ enum BuriedDeployment : int16_t {
     DEPLOYMENT_DERSIG,
     DEPLOYMENT_CSV,
     DEPLOYMENT_SEGWIT,
+    DEPLOYMENT_ANNEX,
 };
 constexpr bool ValidDeployment(BuriedDeployment dep) { return dep <= DEPLOYMENT_SEGWIT; }
 
@@ -94,6 +95,8 @@ struct Params {
     int SegwitHeight;
     /** Don't warn about unknown BIP 9 activations below this height.
      * This prevents us from warning about the CSV and segwit activations. */
+    /** Block height at which group (BIPXXX) becomes active */
+    int AnnexHeight = std::numeric_limits<int>::max();
     int MinBIP9WarningHeight;
     /**
      * Minimum blocks including miner confirmation of the total of 2016 blocks in a retargeting period,
@@ -135,6 +138,8 @@ struct Params {
             return CSVHeight;
         case DEPLOYMENT_SEGWIT:
             return SegwitHeight;
+        case DEPLOYMENT_ANNEX:
+            return AnnexHeight;
         } // no default case, so the compiler can warn about missing cases
         return std::numeric_limits<int>::max();
     }

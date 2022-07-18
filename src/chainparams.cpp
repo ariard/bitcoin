@@ -196,6 +196,7 @@ public:
         consensus.SegwitHeight = 834624; // 00000000002b980fcd729daaa248fd9316a5200e9b367f4ff2c42453e84201ca
         consensus.MinBIP9WarningHeight = 836640; // segwit activation height + miner confirmation window
         consensus.powLimit = uint256S("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.AnnexHeight = 1;
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 10 * 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
@@ -338,6 +339,7 @@ public:
         consensus.fPowNoRetargeting = false;
         consensus.nRuleChangeActivationThreshold = 1815; // 90% of 2016
         consensus.nMinerConfirmationWindow = 2016; // nPowTargetTimespan / nPowTargetSpacing
+        consensus.AnnexHeight = 0; // Annex is always activated on regtest unless overriden
         consensus.MinBIP9WarningHeight = 0;
         consensus.powLimit = uint256S("00000377ae000000000000000000000000000000000000000000000000000000");
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
