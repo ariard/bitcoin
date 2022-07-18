@@ -1872,6 +1872,11 @@ unsigned int GetBlockScriptFlags(const CBlockIndex* pindex, const Consensus::Par
         flags |= SCRIPT_VERIFY_DEFAULT_CHECK_TEMPLATE_VERIFY_HASH;
     }
 
+    // Enforce annex verification (BIPXXX)
+    if (DeploymentActiveAt(*pindex, consensusparams, Consensus::DEPLOYMENT_ANNEX)) {
+        flags |= SCRIPT_VERIFY_ANNEX;
+    }
+
     return flags;
 }
 

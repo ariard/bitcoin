@@ -1659,9 +1659,10 @@ UniValue DeploymentInfo(const CBlockIndex* blockindex, const Consensus::Params& 
     SoftForkDescPushBack(blockindex, softforks, consensusParams, Consensus::DEPLOYMENT_TAPROOT);
     SoftForkDescPushBack(blockindex, softforks, consensusParams, Consensus::DEPLOYMENT_CHECKTEMPLATEVERIFY);
     SoftForkDescPushBack(blockindex, softforks, consensusParams, Consensus::DEPLOYMENT_ANYPREVOUT);
+    SoftForkDescPushBack(blockindex, softforks, consensusParams, Consensus::DEPLOYMENT_ANNEX);
     return softforks;
-}
 } // anon namespace
+}
 
 static RPCHelpMan getdeploymentinfo()
 {
