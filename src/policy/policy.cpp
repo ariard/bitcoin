@@ -258,8 +258,9 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
             // Taproot spend (non-P2SH-wrapped, version 1, witness program size 32; see BIP 341)
             Span stack{tx.vin[i].scriptWitness.stack};
             if (stack.size() >= 2 && !stack.back().empty() && stack.back()[0] == ANNEX_TAG) {
-                // Annexes are nonstandard as long as no semantics are defined for them.
-                return false;
+                const auto& annex_stack = SpanPopBack(stack);
+                if (!IsAnnexStandard(annex_stack))
+                    return false;
             }
             if (stack.size() >= 2) {
                 // Script path spend (2 or more stack elements after removing optional annex)
@@ -281,6 +282,12 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
             }
         }
     }
+    return true;
+}
+
+bool IsAnnexStandard(const std::vector<unsigned char>& annex_stack) {
+    //TODO: - annex should not be present but empty
+    //      - no unknown tags present
     return true;
 }
 
