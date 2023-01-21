@@ -415,4 +415,8 @@ static constexpr int ANNEX_SER_TYPE = SER_NETWORK;
 /// Protocol version used to serialize parameters in GCS filter encoding.
 static constexpr int ANNEX_SER_VERSION = 0;
 
+enum class AnnexTag {
+    FEERATE_POINT,
+}
+
 #endif // BITCOIN_SCRIPT_INTERPRETER_H

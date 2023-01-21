@@ -2062,7 +2062,7 @@ uint256 ComputeTaprootMerkleRoot(Span<const unsigned char> control, const uint25
     return k;
 }
 
-bool VerifyAnnex(const std::vector<unsigned char>& annex_vec, ScriptExecutionData& execdata)
+static bool VerifyAnnex(const std::vector<unsigned char>& annex_vec, const BaseSignatureChecker& checker)
 {
     CDataStream annex(MakeByteSpan(annex_vec), ANNEX_SER_TYPE, ANNEX_SER_VERSION);
 
@@ -2100,12 +2100,17 @@ bool VerifyAnnex(const std::vector<unsigned char>& annex_vec, ScriptExecutionDat
         switch (nRecordType) {
             /* Consensus rule : record value must make sense, per
              * the tag spec */
+	    case Annex::FEERATE_POINT:
+		if (VerifyFeeratePoint(vRecordValue, checker)) return false;
             default:
                 return true;
         }
 	nLastRecordType = nRecordType;
     }
     return true;
+}
+
+static bool VerifyFeeratePoint(const std::vector<unsigned char> vRecordValue, const BaseSignatureChecker& checker, ScriptExecutionData& execdata) {
 }
 
 static bool VerifyTaprootCommitment(const std::vector<unsigned char>& control, const std::vector<unsigned char>& program, const uint256& tapleaf_hash, std::optional<XOnlyPubKey>& internal_key)
@@ -2164,7 +2169,7 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
             execdata.m_annex_present = true;
             // BIPXXX: verify annex
             if (flags & SCRIPT_VERIFY_ANNEX) {
-                if (!VerifyAnnex(annex, execdata)) {
+                if (!VerifyAnnex(annex, checker)) {
                     return set_error(serror, SCRIPT_ERR_ANNEX_WRONG_FORMAT);
                 }
             }
