@@ -77,6 +77,8 @@ static const unsigned int MAX_OP_RETURN_RELAY = 83;
  */
 static constexpr unsigned int EXTRA_DESCENDANT_TX_SIZE_LIMIT{10000};
 
+/** The maximum size of the annex of an input */
+static constexpr unsigned int MAX_PER_INPUT_ANNEX_SIZE{257};
 
 /**
  * Mandatory script verification flags that all new transactions must comply with for
