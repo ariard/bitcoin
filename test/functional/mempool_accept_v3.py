@@ -516,6 +516,13 @@ class MempoolAcceptV3(BitcoinTestFramework):
         node.sendrawtransaction(tx_v3_child_3["hex"])
         self.check_mempool(txids_v2_100 + [tx_v3_parent["txid"], tx_v3_child_3["txid"]])
 
+        tx_replace_child_3 = self.wallet.create_self_transfer_multi(
+            utxos_to_spend=[utxo_unrelated_conflict], fee_per_output=fee_to_beat_child2*10, version=3
+        )
+        node.sendrawtransaction(tx_replace_child_3["hex"])
+        self.check_mempool(txids_v2_100 + [tx_v3_parent["txid"], tx_replace_child_3["txid"]])
+        assert not tx_v3_child_3["txid"] in node.getrawmempool()
+
     @cleanup(extra_args=["-acceptnonstdtxn=1"])
     def test_reorg_sibling_eviction_1p2c(self):
         node = self.nodes[0]
