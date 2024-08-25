@@ -33,11 +33,9 @@ int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParam
     int64_t nOldTime = pblock->nTime;
     int64_t nNewTime{std::max<int64_t>(pindexPrev->GetMedianTimePast() + 1, TicksSinceEpoch<std::chrono::seconds>(NodeClock::now()))};
 
-    LogPrintf("in block template update time\n");
     if (consensusParams.enforce_BIP94 && enable_bip94_check) {
         // Height of block to be mined.
         const int height{pindexPrev->nHeight + 1};
-        LogPrintf("Check diff adjustement time warp height %d difficulty adjustement interval %d\n", height, consensusParams.DifficultyAdjustmentInterval());
         if (height % consensusParams.DifficultyAdjustmentInterval() == 0) {
             nNewTime = std::max<int64_t>(nNewTime, pindexPrev->GetBlockTime() - MAX_TIMEWARP);
         }

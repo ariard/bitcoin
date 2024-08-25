@@ -798,16 +798,10 @@ static RPCHelpMan getblocktemplate()
     }
 
     bool enable_bip94_check = setClientRules.count("bip94") == 1;
-    if (enable_bip94_check) {
-        LogPrintf("bip94 check is enabled\n");
-    } else {
-        LogPrintf("bip94 check is disabled\n");
-    }
 
     // Update block
     static CBlockIndex* pindexPrev;
     static int64_t time_start;
-    LogPrintf("create new block\n");
     static std::unique_ptr<CBlockTemplate> pblocktemplate;
     if (!pindexPrev || pindexPrev->GetBlockHash() != tip ||
         (miner.getTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - time_start > 5))
@@ -830,12 +824,10 @@ static RPCHelpMan getblocktemplate()
         // Need to update only after we know createNewBlock succeeded
         pindexPrev = pindexPrevNew;
     }
-    LogPrintf("out of create new block\n");
     CHECK_NONFATAL(pindexPrev);
     CBlock* pblock = &pblocktemplate->block; // pointer for convenience
 
     // Update nTime
-    LogPrintf("update time call\n");
     UpdateTime(pblock, consensusParams, pindexPrev, enable_bip94_check);
     pblock->nNonce = 0;
 
