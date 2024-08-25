@@ -4184,10 +4184,14 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidatio
 
     // Testnet4 and regtest only: Check timestamp against prev for difficulty-adjustment
     // blocks to prevent timewarp attacks (see https://github.com/bitcoin/bitcoin/pull/15482).
+    LogPrintf("In Contextual Check Block Header Height %d\n", nHeight);
     if (consensusParams.enforce_BIP94) {
+        LogPrintf("In enforce BIP 94 Height %d\n", nHeight);
         // Check timestamp for the first block of each difficulty adjustment
         // interval, except the genesis block.
         if (nHeight % consensusParams.DifficultyAdjustmentInterval() == 0) {
+            LogPrintf("In check difficulty adjustement interval Height %d\n", nHeight);
+            LogPrintf("new block time %s vs old block time %s\n", FormatISO8601DateTime(block.GetBlockTime()), FormatISO8601DateTime(pindexPrev->GetBlockTime() - MAX_TIMEWARP));
             if (block.GetBlockTime() < pindexPrev->GetBlockTime() - MAX_TIMEWARP) {
                 return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "time-timewarp-attack", "block's timestamp is too early on diff adjustment block");
             }

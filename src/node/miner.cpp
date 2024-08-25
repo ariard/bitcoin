@@ -28,14 +28,16 @@
 #include <utility>
 
 namespace node {
-int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev)
+int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev, bool enable_bip94_check)
 {
     int64_t nOldTime = pblock->nTime;
     int64_t nNewTime{std::max<int64_t>(pindexPrev->GetMedianTimePast() + 1, TicksSinceEpoch<std::chrono::seconds>(NodeClock::now()))};
 
-    if (consensusParams.enforce_BIP94) {
+    LogPrintf("in block template update time\n");
+    if (consensusParams.enforce_BIP94 && enable_bip94_check) {
         // Height of block to be mined.
         const int height{pindexPrev->nHeight + 1};
+        LogPrintf("Check diff adjustement time warp height %d difficulty adjustement interval %d\n", height, consensusParams.DifficultyAdjustmentInterval());
         if (height % consensusParams.DifficultyAdjustmentInterval() == 0) {
             nNewTime = std::max<int64_t>(nNewTime, pindexPrev->GetBlockTime() - MAX_TIMEWARP);
         }
@@ -106,7 +108,7 @@ void BlockAssembler::resetBlock()
     nFees = 0;
 }
 
-std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn)
+std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& scriptPubKeyIn, bool enable_bip94_check)
 {
     const auto time_start{SteadyClock::now()};
 
@@ -167,7 +169,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     // Fill in header
     pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
+    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev, enable_bip94_check);
     pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
     pblock->nNonce         = 0;
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);

@@ -19,6 +19,7 @@
 #include <deploymentstatus.h>
 #include <interfaces/mining.h>
 #include <key_io.h>
+#include <logging.h>
 #include <net.h>
 #include <node/context.h>
 #include <node/miner.h>
@@ -796,9 +797,17 @@ static RPCHelpMan getblocktemplate()
         throw JSONRPCError(RPC_INVALID_PARAMETER, "getblocktemplate must be called with the segwit rule set (call with {\"rules\": [\"segwit\"]})");
     }
 
+    bool enable_bip94_check = setClientRules.count("bip94") == 1;
+    if (enable_bip94_check) {
+        LogPrintf("bip94 check is enabled\n");
+    } else {
+        LogPrintf("bip94 check is disabled\n");
+    }
+
     // Update block
     static CBlockIndex* pindexPrev;
     static int64_t time_start;
+    LogPrintf("create new block\n");
     static std::unique_ptr<CBlockTemplate> pblocktemplate;
     if (!pindexPrev || pindexPrev->GetBlockHash() != tip ||
         (miner.getTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - time_start > 5))
@@ -813,7 +822,7 @@ static RPCHelpMan getblocktemplate()
 
         // Create new block
         CScript scriptDummy = CScript() << OP_TRUE;
-        pblocktemplate = miner.createNewBlock(scriptDummy);
+        pblocktemplate = miner.createNewBlock(scriptDummy, {}, enable_bip94_check);
         if (!pblocktemplate) {
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
         }
@@ -821,11 +830,13 @@ static RPCHelpMan getblocktemplate()
         // Need to update only after we know createNewBlock succeeded
         pindexPrev = pindexPrevNew;
     }
+    LogPrintf("out of create new block\n");
     CHECK_NONFATAL(pindexPrev);
     CBlock* pblock = &pblocktemplate->block; // pointer for convenience
 
     // Update nTime
-    UpdateTime(pblock, consensusParams, pindexPrev);
+    LogPrintf("update time call\n");
+    UpdateTime(pblock, consensusParams, pindexPrev, enable_bip94_check);
     pblock->nNonce = 0;
 
     // NOTE: If at some point we support pre-segwit miners post-segwit-activation, this needs to take segwit support into consideration

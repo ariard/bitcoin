@@ -891,11 +891,11 @@ public:
         return TestBlockValidity(state, chainman().GetParams(), chainman().ActiveChainstate(), block, tip, /*fCheckPOW=*/false, check_merkle_root);
     }
 
-    std::unique_ptr<CBlockTemplate> createNewBlock(const CScript& script_pub_key, const BlockCreateOptions& options) override
+    std::unique_ptr<CBlockTemplate> createNewBlock(const CScript& script_pub_key, const BlockCreateOptions& options, bool enable_bip94_check) override
     {
         BlockAssembler::Options assemble_options{options};
         ApplyArgsManOptions(*Assert(m_node.args), assemble_options);
-        return BlockAssembler{chainman().ActiveChainstate(), context()->mempool.get(), assemble_options}.CreateNewBlock(script_pub_key);
+        return BlockAssembler{chainman().ActiveChainstate(), context()->mempool.get(), assemble_options}.CreateNewBlock(script_pub_key, enable_bip94_check);
     }
 
     NodeContext* context() override { return &m_node; }

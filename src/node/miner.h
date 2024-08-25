@@ -170,7 +170,7 @@ public:
     explicit BlockAssembler(Chainstate& chainstate, const CTxMemPool* mempool, const Options& options);
 
     /** Construct a new block template with coinbase to scriptPubKeyIn */
-    std::unique_ptr<CBlockTemplate> CreateNewBlock(const CScript& scriptPubKeyIn);
+    std::unique_ptr<CBlockTemplate> CreateNewBlock(const CScript& scriptPubKeyIn, bool enable_bip94_check);
 
     inline static std::optional<int64_t> m_last_block_num_txs{};
     inline static std::optional<int64_t> m_last_block_weight{};
@@ -204,7 +204,7 @@ private:
     void SortForBlock(const CTxMemPool::setEntries& package, std::vector<CTxMemPool::txiter>& sortedEntries);
 };
 
-int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev);
+int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev, bool enable_bip94_check);
 
 /** Update an old GenerateCoinbaseCommitment from CreateNewBlock after the block txs have changed */
 void RegenerateCommitments(CBlock& block, ChainstateManager& chainman);

@@ -46,7 +46,7 @@ public:
      * @param[in] options options for creating the block
      * @returns a block template
      */
-    virtual std::unique_ptr<node::CBlockTemplate> createNewBlock(const CScript& script_pub_key, const node::BlockCreateOptions& options={}) = 0;
+    virtual std::unique_ptr<node::CBlockTemplate> createNewBlock(const CScript& script_pub_key, const node::BlockCreateOptions& options={}, bool enable_bip94_check=false) = 0;
 
     /**
      * Processes new block. A valid new block is automatically relayed to peers.
