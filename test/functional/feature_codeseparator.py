@@ -91,7 +91,9 @@ def generate_spend_tx(funder_node, parent_txid, alice_pubkey, alice_seckey):
 
     # third - we update the transaction scriptSig with generated der_sig and separator script
 
-    full_script = CScript([der_sig + bytes([SIGHASH_ALL]), alice_pubkey.get_bytes(), OP_CODESEPARATOR, OP_CHECKSIG])
+    fuzzy_sig = der_sig + bytes(0xaa)
+
+    full_script = CScript([fuzzy_sig, der_sig + bytes([SIGHASH_ALL]), alice_pubkey.get_bytes(), OP_CODESEPARATOR, OP_CHECKSIG])
  
     spend_tx_two = CTransaction()
     spend_tx_two.vin.append(CTxIn(COutPoint(int(parent_txid, 16), 0), scriptSig=full_script, nSequence=0))
@@ -184,8 +186,6 @@ class CodeseparatorTest(BitcoinTestFramework):
         assert_raises_rpc_error(-27, "Transaction already in block chain", bob.sendrawtransaction, spend_tx.serialize().hex(), 0)
 
         self.log.info("Spend transaction has been included in the blockchain")
-
-        assert_equal(False, True)
 
 
 if __name__ == '__main__':
