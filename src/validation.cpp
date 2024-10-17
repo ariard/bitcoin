@@ -2193,7 +2193,7 @@ bool CheckInputScripts(const CTransaction& tx, TxValidationState& state,
                 CScriptCheck check2(txdata.m_spent_outputs[i], tx, validation_cache.m_signature_cache, i,
                         flags & ~STANDARD_NOT_MANDATORY_VERIFY_FLAGS, cacheSigStore, &txdata);
                 if (check2())
-                    return state.Invalid(TxValidationResult::TX_NOT_STANDARD, strprintf("non-mandatory-script-verify-flag (%s)", ScriptErrorString(check.GetScriptError())));
+                    return state.Invalid(TxValidationResult::TX_NOT_STANDARD, strprintf("non-mandatory-script-verify-flag (%s)", ScriptErrorString(error)));
 
                 // If the second check failed, it failed due to a mandatory script verification
                 // flag, but the first check might have failed on a non-mandatory script
