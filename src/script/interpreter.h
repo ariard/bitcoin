@@ -163,6 +163,10 @@ enum : uint32_t {
     SCRIPT_VERIFY_OP_CAT = (1U << 26),
     SCRIPT_VERIFY_DISCOURAGE_OP_CAT = (1U << 27),
 
+    // Support OP_CTV in tapscript
+    SCRIPT_VERIFY_OP_CTV = (1U << 28),
+    SCRIPT_VERIFY_DISCOURAGE_OP_CTV = (1U << 29),
+
     // Constants to point to the highest flag in use. Add new flags above this line.
     //
     SCRIPT_VERIFY_END_MARKER

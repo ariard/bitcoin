@@ -1171,6 +1171,41 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
                 }
                 break;
 
+                case OP_CTV:
+                {
+                    if (flags & SCRIPT_VERIFY_DISCOURAGE_CHECK_TEMPLATE_VERIFY_HASH) {
+                        return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_CTV);
+                    }
+
+                    // if flags not enabled; treat as a NOP4
+                    if (!(flags & SCRIPT_VERIFY_OP_CTV)) {
+                        break;
+                    }
+
+                    if (stack.size() < 1) {
+                        return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
+                    }
+
+                    // If the argument was not 32 bytes, treat as OP_NOP4:
+                    switch (stack.back().size()) {
+                        case 32:
+                        {
+                            const Span<const unsigned char> hash{stack.back()};
+                            if (!checker.CheckDefaultCheckTemplateVerifyHash(hash)) {
+                                return set_error(serror, SCRIPT_ERR_TEMPLATE_MISMATCH);
+                            }
+                            break;
+                        }
+                        default:
+                            // future upgrade can add semantics for this opcode with different length args
+                            // so discourage use when applicable
+                            if (flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_CHECK_TEMPLATE_VERIFY_HASH) {
+                                return set_error(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_TEMPLATE);
+                            }
+                    }
+                }
+                break;
+
                 case OP_CHECKMULTISIG:
                 case OP_CHECKMULTISIGVERIFY:
                 {
@@ -1988,6 +2023,11 @@ std::optional<bool> CheckTapscriptOpSuccess(const CScript& exec_script, unsigned
                     } else if (!(flags & SCRIPT_VERIFY_OP_CAT)) {
                         return set_success(serror);
                     }
+                } else if (opcode == OP_CTV) {
+                    if (flags & SCRIPT_VERIFY_DISCOURAGE_OP_CTV) {
+                        return set_error(serror, SCRIPT_ERR_DISCOURAGE_OP_CTV);
+                    } else if (!(flags & SCRIPT_VERIFY_OP_CTV)) {
+                        return set_success(serror);
                 } else {
                     // OP_SUCCESS behaviour
                     if (flags & SCRIPT_VERIFY_DISCOURAGE_OP_SUCCESS) {

@@ -95,6 +95,8 @@ const std::map<std::string, uint32_t> g_verify_flag_names{
     FLAG_NAME(DISCOURAGE_ANYPREVOUT),
     FLAG_NAME(OP_CAT),
     FLAG_NAME(DISCOURAGE_OP_CAT),
+    FLAG_NAME(OP_CTV),
+    FLAG_NAME(DISCOURAGE_OP_CTV),
 };
 #undef FLAG_NAME
 
